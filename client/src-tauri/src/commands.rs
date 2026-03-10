@@ -286,10 +286,20 @@ fn _spawn_installer(profile: &str) -> std::io::Result<std::process::Child> {
 }
 
 /// Spawn the installer process (Unix variant).
+/// Downloads installer.py to a temp file and runs it non-interactively,
+/// matching the Windows approach. The shell wrapper (install.sh) expects
+/// a TTY which isn't available when spawned from Tauri with piped I/O.
 #[cfg(not(windows))]
-fn _spawn_installer(_profile: &str) -> std::io::Result<std::process::Child> {
+fn _spawn_installer(profile: &str) -> std::io::Result<std::process::Child> {
+    let cmd = format!(
+        "tmp=$(mktemp /tmp/pocketpaw_installer.XXXXXX.py) && \
+         curl -fsSL https://raw.githubusercontent.com/pocketpaw/pocketpaw/main/installer/installer.py -o \"$tmp\" && \
+         python3 \"$tmp\" --non-interactive --profile {} --no-launch; \
+         rm -f \"$tmp\"",
+        profile
+    );
     _cmd("sh")
-        .args(["-c", "curl -fsSL https://pocketpaw.xyz/install.sh | sh"])
+        .args(["-c", &cmd])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
