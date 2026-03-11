@@ -106,6 +106,8 @@ logger = logging.getLogger(__name__)
 
 # Module-level uvicorn server reference (set by run_dashboard, read by restart_server)
 _uvicorn_server = None
+# Flag indicating a restart was requested (vs normal shutdown / Ctrl+C)
+_restart_requested = False
 
 # Get frontend directory
 FRONTEND_DIR = Path(__file__).parent / "frontend"
@@ -132,7 +134,8 @@ _BUILTIN_ORIGINS = [
 ]
 try:
     _custom_origins = Settings.load().api_cors_allowed_origins
-except Exception:
+except Exception as e:
+    logger.debug("Failed to load custom CORS origins: %s", e)
     _custom_origins = []
 _EXTRA_ORIGINS = list(set(_BUILTIN_ORIGINS + _custom_origins))
 
@@ -145,7 +148,15 @@ _EXTRA_ORIGINS = list(set(_BUILTIN_ORIGINS + _custom_origins))
 async def security_headers_middleware(request: Request, call_next):
     """Add security headers to all responses."""
     response = await call_next(request)
-    response.headers["X-Frame-Options"] = "DENY"
+
+    # Allow the file-content endpoint to be embedded in same-origin iframes
+    # (used by the in-app PDF/file viewer modal).
+    is_file_content = request.url.path.startswith("/api/v1/files/content")
+    if is_file_content:
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    else:
+        response.headers["X-Frame-Options"] = "DENY"
+
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
@@ -158,6 +169,7 @@ async def security_headers_middleware(request: Request, call_next):
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: blob:; "
         "connect-src 'self' ws: wss: https://cdn.jsdelivr.net https://unpkg.com; "
+        "frame-src 'self'; "
         "frame-ancestors 'none'"
     )
     # HSTS only when accessed via HTTPS (tunnel or reverse proxy)
@@ -192,7 +204,7 @@ app.add_middleware(AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_EXTRA_ORIGINS,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=r"^https?://([a-z]+\.)?localhost(:\d+)?$|^https?://127\.0\.0\.1(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -642,7 +654,8 @@ async def list_available_backends():
                 attr = hint.get("verify_attr")
                 if attr and not hasattr(mod, attr):
                     return False
-            except Exception:
+            except Exception as e:
+                logger.debug("Backend validation failed: %s", e)
                 return False
         # Check CLI binary if this backend needs one
         binary = _CLI_BINARY.get(info.name)
@@ -914,7 +927,7 @@ async def start_tunnel():
         url = await manager.start()
         return {"url": url, "active": True}
     except Exception as e:
-        # Error handling via JSON to frontend
+        logger.warning("Failed to start tunnel: %s", e)
         return {"error": str(e), "active": False}
 
 
@@ -1107,7 +1120,8 @@ async def save_identity(request: Request):
 
     try:
         data = await request.json()
-    except Exception:
+    except Exception as e:
+        logger.debug("Invalid JSON payload received: %s", e)
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
     identity_dir = get_config_path().parent / "identity"
@@ -1350,9 +1364,10 @@ async def get_audit_log(limit: int = 100):
                 break
             try:
                 logs.append(json.loads(line))
-            except Exception:
-                pass
-    except Exception:
+            except Exception as e:
+                logger.debug("Failed to parse log line: %s", e)
+    except Exception as e:
+        logger.warning("Failed to load logs: %s", e)
         return []
 
     return logs
@@ -1448,8 +1463,8 @@ async def get_self_audit_reports():
                     "issues": data.get("issues", 0),
                 }
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Ignoring error while generating reports: %s", e)
     return reports
 
 
@@ -1498,7 +1513,8 @@ async def get_health_errors(limit: int = 20, search: str = ""):
 
         engine = get_health_engine()
         return engine.get_recent_errors(limit=limit, search=search)
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to retrieve recent errors: %s", e)
         return []
 
 
@@ -1512,6 +1528,7 @@ async def clear_health_errors():
         engine.error_store.clear()
         return {"cleared": True}
     except Exception as e:
+        logger.error("Failed to clear errors: %s", e)
         return {"cleared": False, "error": str(e)}
 
 
@@ -1528,8 +1545,8 @@ async def restart_server(request: Request):
     if request.headers.get("content-type", "").startswith("application/json"):
         try:
             body = await request.json()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Request body parsing failed: %s", e)
 
     if not body.get("confirm"):
         return JSONResponse(
@@ -1540,6 +1557,8 @@ async def restart_server(request: Request):
     settings = Settings.load()
     settings.save()
 
+    global _restart_requested
+    _restart_requested = True
     if _uvicorn_server:
         _uvicorn_server.should_exit = True
     return {"restarting": True}
@@ -1633,49 +1652,87 @@ def run_dashboard(
     open_browser: bool = True,
     dev: bool = False,
 ):
-    """Run the dashboard server."""
+    """Run the dashboard server.
 
-    print("\n" + "=" * 50)
-    print("🐾 POCKETPAW WEB DASHBOARD")
-    print("=" * 50)
-    if dev:
-        print("🔄 Development mode — auto-reload enabled")
-    if host == "0.0.0.0":
-        import socket
+    When a restart is requested via the dashboard UI, the server shuts down
+    gracefully, re-reads host/port from the saved config, and starts again.
+    """
+    global _uvicorn_server, _restart_requested
 
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]
-            s.close()
-        except Exception:
-            local_ip = "<your-server-ip>"
-        print(f"\n🌐 Open http://{local_ip}:{port} in your browser")
-        print(f"   (listening on all interfaces — {host}:{port})\n")
-    else:
-        print(f"\n🌐 Open http://localhost:{port} in your browser\n")
+    _MAX_RESTARTS = 5
+    _restart_count = 0
+    first_run = True
+    while True:
+        # On restart, re-read host/port from the persisted config
+        if not first_run:
+            settings = Settings.load()
+            host = settings.web_host
+            port = settings.web_port
+        first_run = False
 
-    if open_browser:
-        _state._open_browser_url = f"http://localhost:{port}"
+        print("\n" + "=" * 50)
+        print("🐾 POCKETPAW WEB DASHBOARD")
+        print("=" * 50)
+        if dev:
+            print("🔄 Development mode — auto-reload enabled")
+        if host == "0.0.0.0":
+            import socket
 
-    if dev:
-        import pathlib
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+                s.close()
+            except Exception:
+                local_ip = "<your-server-ip>"
+            print(f"\n🌐 Open http://{local_ip}:{port} in your browser")
+            print(f"   (listening on all interfaces — {host}:{port})\n")
+        else:
+            print(f"\n🌐 Open http://localhost:{port} in your browser\n")
 
-        src_dir = str(pathlib.Path(__file__).resolve().parent)
-        uvicorn.run(
-            "pocketpaw.dashboard:app",
-            host=host,
-            port=port,
-            reload=True,
-            reload_dirs=[src_dir],
-            reload_includes=["*.py", "*.html", "*.js", "*.css"],
-            log_level="debug",
-        )
-    else:
-        global _uvicorn_server
-        config = uvicorn.Config(app, host=host, port=port)
-        _uvicorn_server = uvicorn.Server(config)
-        _uvicorn_server.run()
+        if open_browser:
+            _state._open_browser_url = f"http://localhost:{port}"
+            # Only auto-open browser on the very first run
+            open_browser = False
+
+        if dev:
+            import pathlib
+
+            src_dir = str(pathlib.Path(__file__).resolve().parent)
+            uvicorn.run(
+                "pocketpaw.dashboard:app",
+                host=host,
+                port=port,
+                reload=True,
+                reload_dirs=[src_dir],
+                reload_includes=["*.py", "*.html", "*.js", "*.css"],
+                log_level="debug",
+                ws_ping_interval=None,
+                ws_ping_timeout=None,
+            )
+            break  # dev mode handles its own reload, no restart loop
+        else:
+            _restart_requested = False
+            config = uvicorn.Config(
+                app,
+                host=host,
+                port=port,
+                # Disable WebSocket ping/pong timeout — agent tool use can
+                # run for minutes without sending WS frames, and the default
+                # 20s timeout would close the connection mid-stream.
+                ws_ping_interval=None,
+                ws_ping_timeout=None,
+            )
+            _uvicorn_server = uvicorn.Server(config)
+            _uvicorn_server.run()
+
+            if not _restart_requested:
+                break  # Normal shutdown (Ctrl+C, etc.) — exit the loop
+            _restart_count += 1
+            if _restart_count > _MAX_RESTARTS:
+                logger.error("Max restart limit (%d) reached, exiting.", _MAX_RESTARTS)
+                break
+            logger.info("Restarting server with updated settings...")
 
 
 if __name__ == "__main__":
