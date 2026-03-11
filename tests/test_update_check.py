@@ -11,6 +11,7 @@ import json
 import time
 from unittest.mock import patch
 
+from pocketpaw.bootstrap.context_builder import _build_update_context
 from pocketpaw.update_check import (
     ANNOUNCEMENT_CACHE_FILENAME,
     CACHE_FILENAME,
@@ -537,3 +538,104 @@ class TestStyledNoticeWithAnnouncement:
         captured = capsys.readouterr()
         assert "Bug fixes for memory hang" in captured.err
         assert "0.5.0" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# Agent context injection (Paw-to-Paw Phase 1 — AI-native delivery)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildUpdateContext:
+    """Tests for the system prompt injection block."""
+
+    def test_empty_when_no_update_and_no_announcement(self):
+        info = {
+            "current": "0.4.8",
+            "latest": "0.4.8",
+            "update_available": False,
+            "announcement": "",
+        }
+        assert _build_update_context(info) == ""
+
+    def test_includes_version_when_update_available(self):
+        info = {
+            "current": "0.4.8",
+            "latest": "0.5.0",
+            "update_available": True,
+            "announcement": "",
+        }
+        block = _build_update_context(info)
+        assert "# Available Update" in block
+        assert "v0.4.8 -> v0.5.0" in block
+        assert "pip install --upgrade pocketpaw" in block
+        assert "mention this naturally" in block
+
+    def test_includes_announcement_without_update(self):
+        info = {
+            "current": "0.4.8",
+            "latest": "0.4.8",
+            "update_available": False,
+            "announcement": "Maintenance window tonight",
+        }
+        block = _build_update_context(info)
+        assert "# Available Update" in block
+        assert "Maintenance window tonight" in block
+        # No version line since there's no update
+        assert "v0.4.8 -> v0.4.8" not in block
+
+    def test_critical_urgency_prefix(self):
+        info = {
+            "current": "0.4.8",
+            "latest": "0.5.0",
+            "update_available": True,
+            "announcement": "Security fix",
+            "urgency": "critical",
+        }
+        block = _build_update_context(info)
+        assert "CRITICAL announcement: Security fix" in block
+        assert "proactively inform the user" in block
+
+    def test_warning_urgency_prefix(self):
+        info = {
+            "current": "0.4.8",
+            "latest": "0.5.0",
+            "update_available": True,
+            "announcement": "Breaking change",
+            "urgency": "warning",
+        }
+        block = _build_update_context(info)
+        assert "Important: Breaking change" in block
+
+    def test_info_urgency_prefix(self):
+        info = {
+            "current": "0.4.8",
+            "latest": "0.5.0",
+            "update_available": True,
+            "announcement": "New feature",
+            "urgency": "info",
+        }
+        block = _build_update_context(info)
+        assert "Announcement: New feature" in block
+
+    def test_includes_url_when_present(self):
+        info = {
+            "current": "0.4.8",
+            "latest": "0.5.0",
+            "update_available": True,
+            "announcement": "Details at link",
+            "announcement_url": "https://example.com/update",
+        }
+        block = _build_update_context(info)
+        assert "https://example.com/update" in block
+
+    def test_behavioral_guidance_present(self):
+        """The block tells the agent how to use the info."""
+        info = {
+            "current": "0.4.8",
+            "latest": "0.5.0",
+            "update_available": True,
+            "announcement": "",
+        }
+        block = _build_update_context(info)
+        assert "Do not interrupt unrelated conversations" in block
+        assert "mention this naturally" in block

@@ -1,6 +1,7 @@
 """
 Builder for assembling the full agent context.
 Created: 2026-02-02
+Updated: 2026-03-11 - Paw-to-Paw Phase 1: inject update/announcement context into system prompt
 Updated: 2026-03-10 - AGENTS.md injection: read project-specific constraints from target repos
 Updated: 2026-03-09 - Sanitize file_context paths before injecting into system prompt
 Updated: 2026-02-17 - Inject health state into system prompt when degraded/unhealthy
@@ -20,6 +21,52 @@ from pocketpaw.bus.format import CHANNEL_FORMAT_HINTS
 from pocketpaw.memory.manager import MemoryManager, get_memory_manager
 
 logger = logging.getLogger(__name__)
+
+
+def _build_update_context(update_info: dict) -> str:
+    """Build a system prompt block for update/announcement awareness.
+
+    Returns empty string when there's nothing to communicate.
+    When an update or announcement exists, returns a contextual block that lets
+    the agent weave the information into conversation naturally, rather than
+    relying on traditional banners or popups (Paw-to-Paw Phase 1).
+    """
+    has_update = update_info.get("update_available")
+    announcement = update_info.get("announcement", "")
+
+    if not has_update and not announcement:
+        return ""
+
+    lines = ["# Available Update"]
+
+    if has_update:
+        current = update_info.get("current", "?")
+        latest = update_info.get("latest", "?")
+        lines.append(f"A newer version of PocketPaw is available: v{current} -> v{latest}.")
+        lines.append("Upgrade command: pip install --upgrade pocketpaw")
+
+    if announcement:
+        urgency = update_info.get("urgency", "info")
+        if urgency == "critical":
+            lines.append(f"CRITICAL announcement: {announcement}")
+        elif urgency == "warning":
+            lines.append(f"Important: {announcement}")
+        else:
+            lines.append(f"Announcement: {announcement}")
+
+    url = update_info.get("announcement_url", "")
+    if url:
+        lines.append(f"More details: {url}")
+
+    lines.append("")
+    lines.append(
+        "You may mention this naturally when relevant (e.g. if the user hits a bug "
+        "that was fixed, or asks about new features). Do not interrupt unrelated "
+        "conversations with update notices. For critical announcements, proactively "
+        "inform the user at the first opportunity."
+    )
+
+    return "\n".join(lines)
 
 
 class AgentContextBuilder:
@@ -148,7 +195,21 @@ class AgentContextBuilder:
         except Exception as exc:  # noqa: BLE001
             logger.debug("Health engine failure (non-fatal, skipping health block): %s", exc)
 
-        # 8. Inject AGENTS.md constraints from the target repo
+        # 8. Inject update/announcement awareness (Paw-to-Paw Phase 1)
+        try:
+            from importlib.metadata import version as _get_version
+
+            from pocketpaw.config import get_config_dir
+            from pocketpaw.update_check import check_for_updates_full
+
+            update_info = check_for_updates_full(_get_version("pocketpaw"), get_config_dir())
+            update_block = _build_update_context(update_info)
+            if update_block:
+                parts.append(update_block)
+        except Exception:
+            pass  # Update context failure never breaks prompt building
+
+        # 9. Inject AGENTS.md constraints from the target repo
         if agents_md_dir:
             try:
                 from pocketpaw.agents_md import AgentsMdLoader
