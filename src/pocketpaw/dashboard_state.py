@@ -11,6 +11,8 @@ from pocketpaw.agents.loop import AgentLoop
 from pocketpaw.bus.adapters.websocket_adapter import WebSocketAdapter
 from pocketpaw.bus.commands import get_command_handler as _get_cmd_handler
 from pocketpaw.config import Settings
+from pocketpaw.lifecycle import register as _register_lifecycle
+from pocketpaw.status import StatusTracker
 
 try:
     from fastapi import WebSocket
@@ -22,9 +24,13 @@ except ImportError:
 
 ws_adapter = WebSocketAdapter()
 agent_loop = AgentLoop()
+status_tracker = StatusTracker()
 
 # Wire up the agent loop so /kill can cancel in-flight sessions
 _get_cmd_handler().set_agent_loop(agent_loop)
+
+# Register status tracker for graceful shutdown
+_register_lifecycle("status_tracker", shutdown=status_tracker.unsubscribe)
 
 # Retain active_connections for legacy broadcasts until fully migrated
 active_connections: list[WebSocket] = []
