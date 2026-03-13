@@ -292,6 +292,10 @@ class Settings(BaseSettings):
             "or a model alias defined in LiteLLM proxy config.yaml"
         ),
     )
+    litellm_max_tokens: int = Field(
+        default=0,
+        description="Max output tokens for LiteLLM models (0 = provider default)",
+    )
 
     # LLM Configuration
     llm_provider: str = Field(

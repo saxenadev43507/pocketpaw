@@ -218,6 +218,7 @@ class PocketPawSocket {
             litellm_api_base: settings.litellmApiBase || 'http://localhost:4000',
             litellm_api_key: settings.litellmApiKey || '',
             litellm_model: settings.litellmModel || '',
+            litellm_max_tokens: parseInt(settings.litellmMaxTokens) || 0,
             bypass_permissions: settings.bypassPermissions,
             web_search_provider: settings.webSearchProvider,
             url_extract_provider: settings.urlExtractProvider,

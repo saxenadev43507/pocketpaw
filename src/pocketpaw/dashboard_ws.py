@@ -407,6 +407,10 @@ async def websocket_handler(
                         settings.litellm_api_key = data["litellm_api_key"]
                     if data.get("litellm_model") is not None:
                         settings.litellm_model = data["litellm_model"]
+                    if "litellm_max_tokens" in data:
+                        val = data["litellm_max_tokens"]
+                        if isinstance(val, int | float) and 0 <= val <= 1000000:
+                            settings.litellm_max_tokens = int(val)
                     if "bypass_permissions" in data:
                         settings.bypass_permissions = bool(data.get("bypass_permissions"))
                     if data.get("web_search_provider"):
@@ -504,6 +508,17 @@ async def websocket_handler(
                 # Reload memory manager with fresh settings
                 agent_loop.memory = get_memory_manager(force_reload=True)
                 agent_loop.context_builder.memory = agent_loop.memory
+
+                # Re-run health checks so status reflects new settings
+                # (e.g. switching provider to litellm clears the "no API key" warning)
+                try:
+                    from pocketpaw.health import get_health_engine
+
+                    engine = get_health_engine()
+                    engine.run_startup_checks()
+                    await websocket.send_json({"type": "health_update", "data": engine.summary})
+                except Exception:
+                    pass  # health refresh is best-effort
 
                 await websocket.send_json(
                     {
@@ -670,6 +685,7 @@ async def websocket_handler(
                             "geminiModel": settings.gemini_model,
                             "litellmApiBase": settings.litellm_api_base,
                             "litellmModel": settings.litellm_model,
+                            "litellmMaxTokens": settings.litellm_max_tokens,
                             "hasLitellmKey": bool(settings.litellm_api_key),
                             "hasGoogleApiKey": bool(settings.google_api_key),
                             "bypassPermissions": settings.bypass_permissions,

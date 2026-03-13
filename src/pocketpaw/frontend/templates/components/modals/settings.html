@@ -462,6 +462,14 @@
                 />
                 <small class="text-white/50 text-[11px]">Use provider/model format (e.g. huggingface/meta-llama/Llama-3-70b)</small>
               </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[12px] font-medium text-[var(--text-secondary)]">Max Output Tokens</label>
+                <input type="number" x-model="settings.litellmMaxTokens" @change="saveSettings()"
+                  min="0" max="1000000" placeholder="0 (provider default)"
+                  class="w-full bg-black/30 border border-[var(--glass-border)] rounded-[10px] py-2 px-3 text-[13px] text-white focus:outline-none focus:border-[var(--accent-color)] focus:bg-black/40 transition-all placeholder-white/40"
+                />
+                <small class="text-white/50 text-[11px]">Set to match your model's limit (e.g. 8192 for DeepSeek). 0 = provider default.</small>
+              </div>
             </div>
             <!-- Model override (Anthropic) -->
             <div class="flex flex-col gap-1" x-show="settings.claudeSdkProvider === 'anthropic'">
@@ -622,6 +630,14 @@
                 />
                 <small class="text-white/50 text-[11px]">Use provider/model format (e.g. huggingface/meta-llama/Llama-3-70b)</small>
               </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[12px] font-medium text-[var(--text-secondary)]">Max Output Tokens</label>
+                <input type="number" x-model="settings.litellmMaxTokens" @change="saveSettings()"
+                  min="0" max="1000000" placeholder="0 (provider default)"
+                  class="w-full bg-black/30 border border-[var(--glass-border)] rounded-[10px] py-2 px-3 text-[13px] text-white focus:outline-none focus:border-[var(--accent-color)] focus:bg-black/40 transition-all placeholder-white/40"
+                />
+                <small class="text-white/50 text-[11px]">Set to match your model's limit (e.g. 8192 for DeepSeek). 0 = provider default.</small>
+              </div>
             </div>
             <!-- Model (for OpenAI provider) -->
             <div class="flex flex-col gap-1" x-show="settings.openaiAgentsProvider === 'openai'">
@@ -697,6 +713,14 @@
                   class="w-full bg-black/30 border border-[var(--glass-border)] rounded-[10px] py-2 px-3 text-[13px] text-white focus:outline-none focus:border-[var(--accent-color)] focus:bg-black/40 transition-all placeholder-white/40"
                 />
                 <small class="text-white/50 text-[11px]">Use provider/model format (e.g. huggingface/meta-llama/Llama-3-70b)</small>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[12px] font-medium text-[var(--text-secondary)]">Max Output Tokens</label>
+                <input type="number" x-model="settings.litellmMaxTokens" @change="saveSettings()"
+                  min="0" max="1000000" placeholder="0 (provider default)"
+                  class="w-full bg-black/30 border border-[var(--glass-border)] rounded-[10px] py-2 px-3 text-[13px] text-white focus:outline-none focus:border-[var(--accent-color)] focus:bg-black/40 transition-all placeholder-white/40"
+                />
+                <small class="text-white/50 text-[11px]">Set to match your model's limit (e.g. 8192 for DeepSeek). 0 = provider default.</small>
               </div>
             </div>
             <div class="flex flex-col gap-1" x-show="settings.googleAdkProvider !== 'litellm'">

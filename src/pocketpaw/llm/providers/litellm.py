@@ -25,6 +25,7 @@ class LiteLLMAdapter:
             model=resolve_model(settings, backend, self.name),
             api_key=settings.litellm_api_key,
             base_url=settings.litellm_api_base.rstrip("/"),
+            max_tokens=settings.litellm_max_tokens,
         )
 
     def build_env_dict(self, config: ProviderConfig) -> dict[str, str]:

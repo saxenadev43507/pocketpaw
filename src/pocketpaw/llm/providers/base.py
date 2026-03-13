@@ -16,6 +16,7 @@ class ProviderConfig:
     model: str  # resolved model name
     api_key: str | None = None  # None for ollama
     base_url: str | None = None  # None for native anthropic/openai
+    max_tokens: int = 0  # 0 = use provider default
     extra: dict[str, str] = field(default_factory=dict)
 
 

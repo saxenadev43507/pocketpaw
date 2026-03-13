@@ -488,11 +488,20 @@ class ClaudeSDKBackend:
             )
             t2 = time.monotonic()
 
+            # Respect provider max_tokens (e.g. DeepSeek caps at 8192)
+            provider = self.settings.claude_sdk_provider or "anthropic"
+            if provider == "litellm" and self.settings.litellm_max_tokens > 0:
+                fast_max_tokens = self.settings.litellm_max_tokens
+            elif provider == "openai_compatible" and self.settings.openai_compatible_max_tokens > 0:
+                fast_max_tokens = self.settings.openai_compatible_max_tokens
+            else:
+                fast_max_tokens = 1024
+
             async with client.messages.stream(
                 model=model,
                 system=system_prompt,
                 messages=api_messages,
-                max_tokens=1024,
+                max_tokens=fast_max_tokens,
             ) as stream:
                 t3 = time.monotonic()
                 logger.info("Fast-path: stream opened in %.0fms", (t3 - t2) * 1000)
