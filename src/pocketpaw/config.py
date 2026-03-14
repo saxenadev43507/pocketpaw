@@ -702,6 +702,12 @@ class Settings(BaseSettings):
         description="Targets for autonomous messages, e.g. ['telegram:12345', 'discord:98765']",
     )
 
+    # Status API
+    status_api_key: str = Field(
+        default="",
+        description="Optional API key for the agent status endpoint. Leave empty to skip auth.",
+    )
+
     # Media Downloads
     media_download_dir: str = Field(
         default="", description="Custom media download dir (default: ~/.pocketpaw/media/)"
