@@ -239,10 +239,17 @@ class SoulManager:
                 f"Unsupported file format: {suffix}. Use .soul, .yaml, .yml, or .json."
             )
 
-        # Replace current soul
+        # Replace current soul — update existing bridge/provider in-place so that
+        # any external references (e.g. AgentContextBuilder.bootstrap) stay valid.
         self.soul = new_soul
-        self.bridge = SoulBridge(self.soul)
-        self.bootstrap_provider = SoulBootstrapProvider(self.soul)
+        if self.bridge is not None:
+            self.bridge._soul = self.soul
+        else:
+            self.bridge = SoulBridge(self.soul)
+        if self.bootstrap_provider is not None:
+            self.bootstrap_provider._soul = self.soul
+        else:
+            self.bootstrap_provider = SoulBootstrapProvider(self.soul)
         self._initialized = True
         self._observe_count = 0
 

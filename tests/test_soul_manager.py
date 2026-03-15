@@ -187,6 +187,37 @@ class TestSoulManager:
         name = await mgr.import_from_file(json_path)
         assert name == "JsonSoul"
 
+    async def test_import_updates_bootstrap_provider_in_place(self, soul_settings, tmp_path):
+        """Import must update the existing bootstrap provider, not replace it.
+
+        AgentContextBuilder holds a reference to the original provider,
+        so replacing it with a new instance would leave the builder stale.
+        """
+        from soul_protocol import Soul
+
+        from pocketpaw.soul.manager import SoulManager
+
+        mgr = SoulManager(soul_settings)
+        await mgr.initialize()
+
+        # Grab the reference that AgentContextBuilder would hold
+        original_provider = mgr.bootstrap_provider
+        original_bridge = mgr.bridge
+
+        # Import a different soul
+        donor = await Soul.birth(name="NewIdentity", persona="I am the new identity.")
+        donor_path = tmp_path / "new.soul"
+        await donor.export(donor_path)
+        await mgr.import_from_file(donor_path)
+
+        # Same object references, but now pointing to the new soul
+        assert mgr.bootstrap_provider is original_provider
+        assert mgr.bridge is original_bridge
+
+        # The provider should generate context for the NEW soul
+        ctx = await mgr.bootstrap_provider.get_context()
+        assert ctx.name == "NewIdentity"
+
     async def test_import_unsupported_format_raises(self, soul_settings, tmp_path):
         from pocketpaw.soul.manager import SoulManager
 
