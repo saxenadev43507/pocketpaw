@@ -28,7 +28,7 @@ async def get_soul_status():
         "mood": getattr(state, "mood", None),
         "energy": getattr(state, "energy", None),
         "social_battery": getattr(state, "social_battery", None),
-        "observe_count": mgr._observe_count,
+        "observe_count": mgr.observe_count,
     }
 
     if hasattr(soul, "self_model") and soul.self_model:
@@ -119,6 +119,16 @@ async def import_soul_from_path(body: dict):
         return {"error": "Missing 'path' field"}
 
     path = Path(file_path)
+
+    # Sandbox: only allow paths within ~/.pocketpaw/soul/
+    from pocketpaw.config import get_config_dir
+
+    allowed_base = get_config_dir() / "soul"
+    try:
+        path.resolve().relative_to(allowed_base.resolve())
+    except ValueError:
+        return {"error": f"Path must be within {allowed_base}"}
+
     if not path.exists():
         return {"error": f"File not found: {file_path}"}
 

@@ -818,7 +818,7 @@ class AgentLoop:
         self, user_input: str, agent_output: str, session_key: str
     ) -> None:
         """Observe interaction and emit soul state event."""
-        if self._soul_manager is None:
+        if self._soul_manager is None or not self._soul_manager._initialized:
             return
         try:
             await self._soul_manager.observe(user_input, agent_output)
@@ -853,7 +853,11 @@ class AgentLoop:
             except Exception:
                 logger.debug("Soul runtime init failed", exc_info=True)
         elif not settings.soul_enabled and self._soul_manager is not None:
-            asyncio.create_task(self._teardown_soul_runtime())
+            if self._soul_manager._initialized:
+                asyncio.create_task(self._teardown_soul_runtime())
+            else:
+                # Not yet initialized, just discard the reference
+                self._soul_manager = None
 
     async def _initialize_soul_runtime(self) -> None:
         """Initialize soul when enabled at runtime."""

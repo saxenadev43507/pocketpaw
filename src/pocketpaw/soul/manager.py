@@ -50,6 +50,11 @@ class SoulManager:
         self._observe_count = 0
 
     @property
+    def observe_count(self) -> int:
+        """Number of observations since last reflection."""
+        return self._observe_count
+
+    @property
     def soul_dir(self) -> Path:
         if self._settings.soul_path:
             p = Path(self._settings.soul_path)

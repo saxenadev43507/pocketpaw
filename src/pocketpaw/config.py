@@ -715,6 +715,8 @@ class Settings(BaseSettings):
         default="",
         description="Custom persona description for the soul (empty = auto-generated)",
     )
+    # TODO: soul_values and soul_ocean are not yet exposed in the dashboard UI.
+    #  Add controls in a Soul settings tab when the UI is built out.
     soul_values: list[str] = Field(
         default_factory=lambda: ["helpfulness", "precision", "privacy"],
         description="Core values for the soul identity",
