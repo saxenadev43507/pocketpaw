@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Sessions"], dependencies=[Depends(require_scope("sessions"))])
 
+
 @router.post("/sessions", response_model=SessionCreateResponse)
 async def create_session():
     """Create a new empty session and return its ID."""

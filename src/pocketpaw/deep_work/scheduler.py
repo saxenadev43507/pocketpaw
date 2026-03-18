@@ -18,6 +18,7 @@ from pocketpaw.mission_control.models import Task, TaskStatus, now_iso
 
 logger = logging.getLogger(__name__)
 
+
 def _get_id(item) -> str:
     """Extract the identifier from a Task (.id) or TaskSpec (.key)."""
     if hasattr(item, "key") and item.key:
@@ -66,9 +67,7 @@ class DependencyScheduler:
         """
         project_tasks = await self.manager.get_project_tasks(project_id)
         resolved_ids = {
-            t.id
-            for t in project_tasks
-            if t.status in (TaskStatus.DONE, TaskStatus.SKIPPED)
+            t.id for t in project_tasks if t.status in (TaskStatus.DONE, TaskStatus.SKIPPED)
         }
 
         ready = []

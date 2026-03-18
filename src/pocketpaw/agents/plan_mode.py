@@ -13,6 +13,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class PlanStatus(StrEnum):
     PROPOSED = "proposed"
     APPROVED = "approved"

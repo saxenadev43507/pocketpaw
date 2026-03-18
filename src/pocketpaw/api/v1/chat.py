@@ -29,6 +29,7 @@ _active_streams: dict[str, asyncio.Event] = {}
 
 _WS_PREFIX = "websocket_"
 
+
 def _extract_chat_id(session_id: str | None) -> str:
     """Convert a client-supplied session_id to a raw chat_id for the message bus.
 
