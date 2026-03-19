@@ -7,6 +7,7 @@ backends if the primary backend fails.
 
 import logging
 from collections.abc import AsyncIterator
+from typing import Any
 
 from pocketpaw.agents.backend import BackendInfo
 from pocketpaw.agents.protocol import AgentEvent
@@ -27,7 +28,7 @@ class AgentRouter:
         self._active_backend_name: str | None = None
 
         # Cache for fallback backend instances
-        self._fallback_instances: dict[str, object] = {}
+        self._fallback_instances: dict[str, Any] = {}
 
         # Optional fallback backends
         self._fallback_backends: list[str] = settings.fallback_backends
@@ -50,6 +51,7 @@ class AgentRouter:
 
         if cls is None:
             logger.error("No agent backend could be loaded")
+            self._active_backend_name = None
             return
 
         try:
@@ -61,6 +63,7 @@ class AgentRouter:
 
         except Exception as exc:
             logger.error("Failed to initialize '%s' backend: %s", backend_name, exc)
+            self._active_backend_name = None
 
     def _get_fallback_backend(self, backend_name: str):
         """Return cached fallback backend or create it."""
@@ -96,9 +99,8 @@ class AgentRouter:
 
         last_error: str | None = None
 
-        # First try primary backend
+        # Primary backend (streaming, no buffering, no error-event fallback)
         if self._backend is not None:
-            buffer = []
             try:
                 async for event in self._backend.run(
                     message,
@@ -106,13 +108,10 @@ class AgentRouter:
                     history=history,
                     session_key=session_key,
                 ):
-                    buffer.append(event)
-                    if event.type =="error":    
-                        raise RuntimeError(str(event.content))
+                    yield event
+
                     if event.type == "done":
-                        for e in buffer:
-                            yield e
-                    return
+                        return
 
             except Exception as exc:
                 last_error = str(exc)
@@ -122,7 +121,7 @@ class AgentRouter:
                     exc,
                 )
 
-        # Try fallback backends
+        # Fallback backends
         for backend_name in self._fallback_backends:
             backend = self._get_fallback_backend(backend_name)
 
@@ -140,6 +139,7 @@ class AgentRouter:
                     session_key=session_key,
                 ):
                     yield event
+
                     if event.type == "done":
                         return
 
@@ -151,11 +151,11 @@ class AgentRouter:
                     exc,
                 )
 
+        # All backends failed
         yield AgentEvent(
             type="error",
             content=last_error or "All configured backends failed",
         )
-
         yield AgentEvent(type="done", content="")
 
     async def stop(self) -> None:
