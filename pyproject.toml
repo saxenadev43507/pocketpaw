@@ -90,6 +90,7 @@ copilot-sdk = [
 ]
 deep-agents = [
     "deepagents>=0.1.0",
+    "langchain-mcp-adapters>=0.1.0",
 ]
 litellm = [
     "litellm>=1.40.0",
@@ -240,6 +241,7 @@ all = [
     "google-adk>=1.0.0",
     "github-copilot-sdk>=0.1.0",
     "deepagents>=0.1.0",
+    "langchain-mcp-adapters>=0.1.0",
 ]
 dev = [
     # all deps (flattened from [all])
@@ -267,6 +269,7 @@ dev = [
     "google-adk>=1.0.0",
     "github-copilot-sdk>=0.1.0",
     "deepagents>=0.1.0",
+    "langchain-mcp-adapters>=0.1.0",
     # dev tools
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
@@ -330,6 +333,7 @@ dev = [
     "google-adk>=1.0.0",
     "github-copilot-sdk>=0.1.0",
     "deepagents>=0.1.0",
+    "langchain-mcp-adapters>=0.1.0",
     # dev tools
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",

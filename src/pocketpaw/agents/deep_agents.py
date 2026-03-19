@@ -71,6 +71,7 @@ class DeepAgentsBackend:
             capabilities=(
                 Capability.STREAMING
                 | Capability.TOOLS
+                | Capability.MCP
                 | Capability.MULTI_TURN
                 | Capability.CUSTOM_SYSTEM_PROMPT
             ),
@@ -104,6 +105,8 @@ class DeepAgentsBackend:
         self._stop_flag = False
         self._sdk_available = False
         self._custom_tools: list | None = None
+        self._mcp_tools: list | None = None
+        self._mcp_client: Any = None
         self._cached_agent: Any = None
         self._cached_model_key: str = ""
         self._initialize()
@@ -129,6 +132,79 @@ class DeepAgentsBackend:
             logger.debug("Could not build custom tools: %s", exc)
             self._custom_tools = []
         return self._custom_tools
+
+    async def _build_mcp_tools(self) -> list:
+        """Build LangChain tools from PocketPaw's configured MCP servers.
+
+        Uses langchain-mcp-adapters to wrap MCP servers as LangChain tools
+        that can be passed to create_deep_agent(). Requires the
+        ``langchain-mcp-adapters`` package.
+        """
+        if self._mcp_tools is not None:
+            return self._mcp_tools
+
+        try:
+            from langchain_mcp_adapters.client import MultiServerMCPClient
+        except ImportError:
+            logger.debug("langchain-mcp-adapters not installed, skipping MCP tools")
+            self._mcp_tools = []
+            return self._mcp_tools
+
+        try:
+            from pocketpaw.mcp.config import load_mcp_config
+        except ImportError:
+            self._mcp_tools = []
+            return self._mcp_tools
+
+        from pocketpaw.tools.policy import ToolPolicy
+
+        configs = load_mcp_config()
+        if not configs:
+            self._mcp_tools = []
+            return self._mcp_tools
+
+        policy = ToolPolicy(
+            profile=self.settings.tool_profile,
+            allow=self.settings.tools_allow,
+            deny=self.settings.tools_deny,
+        )
+
+        # Build MultiServerMCPClient config from PocketPaw MCP configs
+        client_config: dict[str, dict] = {}
+        for cfg in configs:
+            if not cfg.enabled:
+                continue
+            if not policy.is_mcp_server_allowed(cfg.name):
+                logger.info("MCP server '%s' blocked by tool policy", cfg.name)
+                continue
+
+            if cfg.transport == "stdio" and cfg.command:
+                client_config[cfg.name] = {
+                    "transport": "stdio",
+                    "command": cfg.command,
+                    "args": cfg.args or [],
+                    "env": cfg.env or None,
+                }
+            elif cfg.transport in ("sse", "http", "streamable-http") and cfg.url:
+                transport = "http" if cfg.transport == "streamable-http" else cfg.transport
+                client_config[cfg.name] = {
+                    "transport": transport,
+                    "url": cfg.url,
+                }
+
+        if not client_config:
+            self._mcp_tools = []
+            return self._mcp_tools
+
+        try:
+            self._mcp_client = MultiServerMCPClient(client_config)
+            self._mcp_tools = await self._mcp_client.get_tools()
+            logger.info("Built %d MCP tools for Deep Agents", len(self._mcp_tools))
+        except Exception as exc:
+            logger.warning("Failed to load MCP tools: %s", exc)
+            self._mcp_tools = []
+
+        return self._mcp_tools
 
     def _parse_provider_model(self) -> tuple[str, str]:
         """Parse provider and model from the deep_agents_model setting.
@@ -217,7 +293,9 @@ class DeepAgentsBackend:
         logger.info("Deep Agents: init_chat_model(%r) with %d kwargs", model_id, len(kwargs))
         return init_chat_model(model_id, **kwargs)
 
-    def _get_or_create_agent(self, model: Any, instructions: str) -> Any:
+    def _get_or_create_agent(
+        self, model: Any, instructions: str, mcp_tools: list | None = None
+    ) -> Any:
         """Cache the compiled LangGraph agent to avoid recompilation on every call."""
         from deepagents import create_deep_agent
 
@@ -226,10 +304,10 @@ class DeepAgentsBackend:
         if self._cached_agent is not None and self._cached_model_key == model_key:
             return self._cached_agent
 
-        custom_tools = self._build_custom_tools()
+        all_tools = self._build_custom_tools() + (mcp_tools or [])
         agent = create_deep_agent(
             model=model,
-            tools=custom_tools if custom_tools else [],
+            tools=all_tools if all_tools else [],
             system_prompt=instructions,
         )
         self._cached_agent = agent
@@ -260,7 +338,9 @@ class DeepAgentsBackend:
             model = self._build_model()
             instructions = system_prompt or _DEFAULT_IDENTITY
 
-            agent = self._get_or_create_agent(model, instructions)
+            # Load MCP tools from configured servers (async, cached after first call)
+            mcp_tools = await self._build_mcp_tools()
+            agent = self._get_or_create_agent(model, instructions, mcp_tools=mcp_tools)
 
             # Build messages list: history + current message
             messages: list[dict[str, str]] = []
