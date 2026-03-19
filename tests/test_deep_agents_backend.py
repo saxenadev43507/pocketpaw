@@ -88,7 +88,7 @@ class TestDeepAgentsProviderParsing:
     def test_parse_model_only_defaults_to_anthropic(self):
         from pocketpaw.agents.deep_agents import DeepAgentsBackend
 
-        settings = Settings(deep_agents_model="claude-sonnet-4-6")
+        settings = Settings(deep_agents_model="claude-sonnet-4-6", llm_provider="auto")
         backend = DeepAgentsBackend(settings)
         provider, model = backend._parse_provider_model()
         assert provider == "anthropic"
@@ -97,7 +97,7 @@ class TestDeepAgentsProviderParsing:
     def test_parse_empty_model_defaults(self):
         from pocketpaw.agents.deep_agents import DeepAgentsBackend
 
-        settings = Settings(deep_agents_model="")
+        settings = Settings(deep_agents_model="", llm_provider="auto")
         backend = DeepAgentsBackend(settings)
         provider, model = backend._parse_provider_model()
         assert provider == "anthropic"
