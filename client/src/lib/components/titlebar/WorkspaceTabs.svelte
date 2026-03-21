@@ -8,7 +8,7 @@
   const tabs: { value: string; label: string; icon: Component<any>; match: (p: string) => boolean; disabled?: boolean }[] = [
     { value: "/chat", label: "Chat", icon: MessageSquare, match: (p) => p.startsWith("/chat") },
     { value: "/", label: "Files", icon: FolderOpen, match: (p) => p === "/" },
-    { value: "/command-center", label: "PawKits", icon: Rocket, match: (p) => p.startsWith("/command-center"), disabled: true },
+    { value: "/pockets", label: "Pockets", icon: Rocket, match: (p) => p.startsWith("/pockets") || p.startsWith("/command-center") },
     { value: "/projects", label: "Deep Work", icon: FolderKanban, match: (p) => p.startsWith("/projects"), disabled: true },
   ];
 
