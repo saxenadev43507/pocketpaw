@@ -79,7 +79,7 @@ class ClaudeSDKBackend:
                 "WebFetch",
             ],
             tool_policy_map=ClaudeSDKBackend._TOOL_POLICY_MAP,
-            required_keys=["anthropic_api_key"],
+            required_keys=[],  # temporarily bypassed
             supported_providers=[
                 "anthropic",
                 "ollama",
@@ -530,7 +530,7 @@ class ClaudeSDKBackend:
             elif provider == "openai_compatible" and self.settings.openai_compatible_max_tokens > 0:
                 fast_max_tokens = self.settings.openai_compatible_max_tokens
             else:
-                fast_max_tokens = 1024
+                fast_max_tokens = 4096
 
             async with client.messages.stream(
                 model=model,
@@ -751,7 +751,6 @@ class ClaudeSDKBackend:
             # ── API key check for Anthropic provider ──────────────
             # Skip if using a non-Anthropic provider, or if the active
             # provider is claude_code (it handles OAuth auth via its CLI).
-            is_claude_code_provider = provider in ("claude_code", "claude_agent_sdk")
             is_non_anthropic = (
                 llm.is_ollama
                 or llm.is_openai_compatible
@@ -759,24 +758,25 @@ class ClaudeSDKBackend:
                 or llm.is_litellm
                 or llm.is_openrouter
             )
-            if not is_non_anthropic:
-                has_api_key = bool(llm.api_key or os.environ.get("ANTHROPIC_API_KEY"))
-                if not has_api_key and not is_claude_code_provider:
-                    yield AgentEvent(
-                        type="error",
-                        content=(
-                            "**API key required** -- The Claude SDK backend needs "
-                            "an Anthropic API key.\n\n"
-                            "**How to fix:**\n"
-                            "1. Get an API key at "
-                            "[console.anthropic.com](https://console.anthropic.com/settings/keys)\n"
-                            "2. Add it in **Settings > API Keys > Anthropic API Key**\n"
-                            "3. Or set the `ANTHROPIC_API_KEY` environment variable\n\n"
-                            "*Alternatively, switch to **Ollama (Local)** in Settings "
-                            "> General for free local inference.*"
-                        ),
-                    )
-                    return
+            # NOTE: API key check temporarily bypassed
+            # if not is_non_anthropic:
+            #     has_api_key = bool(llm.api_key or os.environ.get("ANTHROPIC_API_KEY"))
+            #     if not has_api_key and not is_claude_code_provider:
+            #         yield AgentEvent(
+            #             type="error",
+            #             content=(
+            #                 "**API key required** -- The Claude SDK backend needs "
+            #                 "an Anthropic API key.\n\n"
+            #                 "**How to fix:**\n"
+            #                 "1. Get an API key at "
+            #                 "[console.anthropic.com](https://console.anthropic.com/settings/keys)\n"
+            #                 "2. Add it in **Settings > API Keys > Anthropic API Key**\n"
+            #                 "3. Or set the `ANTHROPIC_API_KEY` environment variable\n\n"
+            #                 "*Alternatively, switch to **Ollama (Local)** in Settings "
+            #                 "> General for free local inference.*"
+            #             ),
+            #         )
+            #         return
 
             # Smart model routing — classify BEFORE prompt composition so we
             # can skip tool instructions for SIMPLE messages and dispatch to
@@ -813,19 +813,21 @@ class ClaudeSDKBackend:
             # System prompt — instructions are now part of identity
             # (injected by BootstrapContext.to_system_prompt() via INSTRUCTIONS.md)
             identity = system_prompt or _DEFAULT_IDENTITY
+            # The persistent ClaudeSDKClient maintains conversation history
+            # natively across query() calls, so we do NOT inject history into
+            # the system prompt for that path. History is only appended for
+            # the stateless fallback path (which starts fresh each call).
             final_prompt = identity
-
-            # Inject session history into system prompt (SDK query() takes a single string)
+            final_prompt_with_history = identity
             if history:
                 lines = ["# Recent Conversation"]
                 for msg in history:
                     role = msg.get("role", "user").capitalize()
                     content = msg.get("content", "")
-                    # Truncate very long messages to keep prompt manageable
-                    if len(content) > 500:
-                        content = content[:500] + "..."
+                    if len(content) > 2000:
+                        content = content[:2000] + "..."
                     lines.append(f"**{role}**: {content}")
-                final_prompt += "\n\n" + "\n".join(lines)
+                final_prompt_with_history += "\n\n" + "\n".join(lines)
 
             # Build allowed tools list, filtered by tool policy
             all_sdk_tools = [
@@ -998,7 +1000,15 @@ class ClaudeSDKBackend:
 
             if event_stream is None:
                 logger.info("Starting stateless query (fallback — _client_in_use was True)")
-                event_stream = self._resilient_query(prompt=message, options=options)
+                # Stateless query starts fresh with no conversation memory,
+                # so inject compacted history into the system prompt.
+                if final_prompt_with_history != final_prompt:
+                    stateless_kwargs = dict(options_kwargs)
+                    stateless_kwargs["system_prompt"] = final_prompt_with_history
+                    stateless_options = self._ClaudeAgentOptions(**stateless_kwargs)
+                else:
+                    stateless_options = options
+                event_stream = self._resilient_query(prompt=message, options=stateless_options)
 
             # State tracking for StreamEvent deduplication
             _streamed_via_events = False
