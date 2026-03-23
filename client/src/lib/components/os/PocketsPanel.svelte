@@ -1,6 +1,6 @@
 <!-- PocketsPanel.svelte — Pockets workspace browser + detail view for the Agent OS.
-     Updated: 2026-03-22 — Pocket detail page with widget canvas.
-     AI sidebar has Back + New Chat buttons for conversation management.
+     Updated: 2026-03-23 — Added NexWrk hospitality demo pockets (NexWrk HQ + NexWrk Events).
+     Hospitality category, contextual AI responses, NexWrk-specific sidebar suggestions.
 -->
 <script lang="ts">
   import { onMount, tick } from "svelte";
@@ -39,6 +39,8 @@
   import Star from "@lucide/svelte/icons/star";
   import Maximize2 from "@lucide/svelte/icons/maximize-2";
   import GripVertical from "@lucide/svelte/icons/grip-vertical";
+  import Building2 from "@lucide/svelte/icons/building-2";
+  import UtensilsCrossed from "@lucide/svelte/icons/utensils-crossed";
   import type { Component } from "svelte";
 
   // --- AI chat state ---
@@ -63,6 +65,17 @@
     "Good call. I swapped the bar chart for a line chart — better for time-series data.",
   ];
 
+  const AI_RESPONSES_NEXWRK = [
+    "Checked the bookings — 3 confirmed events this week totaling $60,500 in projected revenue. Thursday and Saturday are at full capacity.",
+    "Occupancy is tracking at 78% this week, up 12% from last. Thursday night and Saturday are fully locked.",
+    "Done — I added a Revenue Forecast widget using your last 30 days of event data. Projecting ~$68K for next week based on confirmed bookings.",
+    "Your Google average is sitting at 4.7★ across 214 reviews. Top theme this week: 'atmosphere' — mentioned in 18 of the last 20 reviews.",
+    "Flagged 2 things: Hennessy allocation is down to 4 bottles for Saturday's summit, and the DJ contract for Apr 5 is still unsigned.",
+    "Member pipeline update: 847 on the waitlist, 186 active. Based on churn patterns I'd recommend activating 40 this quarter — want me to draft the invite sequence?",
+    "Added the F&B upsell tracker. This week bar packages are outperforming food by 32% — bottles are the highest-margin line at $680 avg.",
+    "I've connected the OpenTable integration. Venue bookings will now sync automatically every 15 minutes.",
+  ];
+
   async function scrollAiChat() {
     await tick();
     if (aiChatEl) aiChatEl.scrollTop = aiChatEl.scrollHeight;
@@ -77,7 +90,11 @@
     aiTyping = true;
     await scrollAiChat();
     await new Promise((r) => setTimeout(r, 800 + Math.random() * 800));
-    const responses = selectedPocket ? AI_RESPONSES_DETAIL : AI_RESPONSES_GRID;
+    const responses = selectedPocket?.name.includes("NexWrk")
+      ? AI_RESPONSES_NEXWRK
+      : selectedPocket
+        ? AI_RESPONSES_DETAIL
+        : AI_RESPONSES_GRID;
     aiMessages = [...aiMessages, {
       id: `a${Date.now()}`, role: "agent",
       text: responses[Math.floor(Math.random() * responses.length)],
@@ -130,6 +147,7 @@
     { id: "research", label: "Research", icon: FlaskConical },
     { id: "data", label: "Data & Metrics", icon: BarChart3 },
     { id: "business", label: "Business", icon: Store },
+    { id: "hospitality", label: "Hospitality", icon: Building2 },
     { id: "custom", label: "Custom", icon: Layers },
   ];
   let activeCategory = $state("all");
@@ -218,6 +236,24 @@
       { id: "w63", name: "Accounts Receivable", icon: CreditCard, color: "#0A84FF", span: "col-span-1" },
       { id: "w64", name: "Cash Flow", icon: TrendingUp, color: "#30D158", span: "col-span-2" },
       { id: "w65", name: "Tax Deadlines", icon: CalendarDays, color: "#FF9F0A", span: "col-span-1" },
+    ]},
+    // --- NexWrk Hospitality ---
+    { id: "p12", name: "NexWrk HQ", description: "Venue operations — events, bookings, F&B, occupancy, and member pipeline", type: "hospitality", icon: Building2, color: "#FF6B35", lastActive: "Just now", active: true, widgets: [
+      { id: "w70", name: "NexWrk Revenue", icon: DollarSign, color: "#30D158", span: "col-span-1" },
+      { id: "w71", name: "Event Pipeline", icon: CalendarDays, color: "#FF6B35", span: "col-span-2" },
+      { id: "w72", name: "Venue Bookings", icon: LayoutGrid, color: "#0A84FF", span: "col-span-2" },
+      { id: "w73", name: "Occupancy Rate", icon: TrendingUp, color: "#BF5AF2", span: "col-span-1" },
+      { id: "w74", name: "F&B Breakdown", icon: UtensilsCrossed, color: "#FF9F0A", span: "col-span-2" },
+      { id: "w75", name: "Member Pipeline", icon: Users, color: "#5E5CE6", span: "col-span-2" },
+      { id: "w76", name: "Event Reviews", icon: Star, color: "#FEBC2E", span: "col-span-1" },
+      { id: "w77", name: "Event Staff", icon: CalendarDays, color: "#64D2FF", span: "col-span-1" },
+    ]},
+    { id: "p13", name: "NexWrk Events", description: "Upcoming events — production status, guest count, revenue, and vendor checklist", type: "hospitality", icon: Sparkles, color: "#E040FB", lastActive: "1 hour ago", widgets: [
+      { id: "w80", name: "Upcoming Events", icon: CalendarDays, color: "#E040FB", span: "col-span-2" },
+      { id: "w81", name: "Guest RSVP", icon: Users, color: "#0A84FF", span: "col-span-1" },
+      { id: "w82", name: "Sponsor Pipeline", icon: DollarSign, color: "#30D158", span: "col-span-1" },
+      { id: "w83", name: "Event Checklist", icon: ListTodo, color: "#FF9F0A", span: "col-span-2" },
+      { id: "w84", name: "Venue Capacity", icon: BarChart3, color: "#FF6B35", span: "col-span-2" },
     ]},
   ];
 
@@ -518,6 +554,98 @@
       { text: "Payroll tax deposit", time: "May 15", dot: "#FF9F0A" },
       { text: "Q2 estimated tax payment", time: "Jun 15", dot: "#5E5CE6" },
     ]},
+    // --- NexWrk Hospitality ---
+    "NexWrk Revenue": { type: "stats", stats: [
+      { label: "Revenue Today", value: "$18,400", trend: "+23%" },
+      { label: "Events This Week", value: "6", trend: "+2" },
+      { label: "Avg Event Value", value: "$12,800" },
+      { label: "F&B Upsell", value: "$3,200", trend: "+8%" },
+    ]},
+    "Event Pipeline": { type: "table", headers: ["Event", "Date", "Guests", "Revenue", "Status"], rows: [
+      { cells: ["Founders Dinner", "Mar 25", "85", "$14,500", "Confirmed"], status: "#30D158" },
+      { cells: ["Hospitality Summit", "Mar 27", "220", "$28,000", "Confirmed"], status: "#30D158" },
+      { cells: ["Private Buyout — TBD", "Mar 28", "120", "$18,000", "Pending Deposit"], status: "#FF9F0A" },
+      { cells: ["Product Launch Night", "Apr 2", "180", "$22,500", "Confirmed"], status: "#30D158" },
+      { cells: ["Industry Mixer", "Apr 5", "300", "$35,000", "In Discussion"], status: "#5E5CE6" },
+    ]},
+    "Venue Bookings": { type: "table", headers: ["Space", "Client", "Date/Time", "Guests", "Status"], rows: [
+      { cells: ["Main Hall", "Meridian Capital", "Mar 25 7pm", "85", "Locked"], status: "#30D158" },
+      { cells: ["Rooftop Terrace", "Hospitality Assoc.", "Mar 27 6pm", "220", "Locked"], status: "#30D158" },
+      { cells: ["Private Dining", "Undisclosed", "Mar 28 8pm", "20", "Hold — 48hr"], status: "#FF9F0A" },
+      { cells: ["Main Hall + Terrace", "Launchpad Events", "Apr 2 7pm", "180", "Contract Sent"], status: "#FF9F0A" },
+      { cells: ["Full Venue Buyout", "NexWrk Board", "Apr 5 5pm", "300", "Inquiring"], status: "#5E5CE6" },
+    ]},
+    "Occupancy Rate": { type: "chart", bars: [
+      { label: "Mon", value: 45, color: "#BF5AF2" },
+      { label: "Tue", value: 60, color: "#BF5AF2" },
+      { label: "Wed", value: 55, color: "#BF5AF2" },
+      { label: "Thu", value: 92, color: "#BF5AF2" },
+      { label: "Fri", value: 100, color: "#BF5AF2" },
+      { label: "Sat", value: 100, color: "#BF5AF2" },
+      { label: "Sun", value: 40, color: "#BF5AF2" },
+    ]},
+    "F&B Breakdown": { type: "chart", bars: [
+      { label: "Bar", value: 100, color: "#FF9F0A" },
+      { label: "Food", value: 68, color: "#FF6B35" },
+      { label: "Packages", value: 82, color: "#FEBC2E" },
+      { label: "Bottles", value: 55, color: "#BF5AF2" },
+      { label: "Custom", value: 30, color: "#5E5CE6" },
+    ]},
+    "Member Pipeline": { type: "table", headers: ["Stage", "Count", "Change", "Action"], rows: [
+      { cells: ["Waitlist", "847", "+23 this week", "Review applications"], status: "#5E5CE6" },
+      { cells: ["Qualified", "62", "+8 this week", "Send invites"], status: "#0A84FF" },
+      { cells: ["Onboarding", "14", "2 pending docs", "Follow up"], status: "#FF9F0A" },
+      { cells: ["Active Members", "186", "+6 this month", "Engaged"], status: "#30D158" },
+      { cells: ["Churned", "8", "-3 vs last mo.", "Win-back sequence"], status: "#FF453A" },
+    ]},
+    "Event Reviews": { type: "activity", items: [
+      { text: "★★★★★ \"The rooftop venue is unmatched in NYC\" — Google", time: "2h", dot: "#FEBC2E" },
+      { text: "★★★★★ \"Founders Dinner was perfectly run\" — Attendee", time: "1d", dot: "#FEBC2E" },
+      { text: "★★★★☆ \"Great space, catering could be better\" — Yelp", time: "2d", dot: "#FEBC2E" },
+      { text: "★★★★★ \"Best networking event I've attended\" — LinkedIn", time: "3d", dot: "#FEBC2E" },
+      { text: "★★★☆☆ \"Sound system issues during main talk\" — Feedback form", time: "4d", dot: "#FF9F0A" },
+    ]},
+    "Event Staff": { type: "table", headers: ["Name", "Role", "Event", "Status"], rows: [
+      { cells: ["Diana R.", "Event Lead", "Founders Dinner", "Confirmed"], status: "#30D158" },
+      { cells: ["Marcus T.", "AV Tech", "Founders Dinner", "Confirmed"], status: "#30D158" },
+      { cells: ["Sofia A.", "F&B Manager", "Founders Dinner", "Confirmed"], status: "#30D158" },
+      { cells: ["Kenji L.", "Venue Ops", "All Events", "On Call"], status: "#0A84FF" },
+      { cells: ["Alex M.", "Bartender", "Mar 27 Summit", "Needs Confirm"], status: "#FF9F0A" },
+    ]},
+    "Upcoming Events": { type: "table", headers: ["Event", "Date", "Venue", "Capacity", "Status"], rows: [
+      { cells: ["Founders Dinner", "Mar 25", "Main Hall", "85 / 85", "Full"], status: "#30D158" },
+      { cells: ["Hospitality Summit", "Mar 27", "Rooftop", "220 / 220", "Full"], status: "#30D158" },
+      { cells: ["Private Buyout", "Mar 28", "Private Dining", "12 / 20", "Open"], status: "#FF9F0A" },
+      { cells: ["Product Launch Night", "Apr 2", "Main + Terrace", "162 / 180", "Open"], status: "#0A84FF" },
+      { cells: ["Industry Mixer", "Apr 5", "Full Venue", "0 / 300", "Hold"], status: "#5E5CE6" },
+    ]},
+    "Guest RSVP": { type: "stats", stats: [
+      { label: "Total RSVPs (Week)", value: "517" },
+      { label: "Confirmed", value: "441", trend: "+32" },
+      { label: "Pending", value: "76" },
+      { label: "Waitlisted", value: "23" },
+    ]},
+    "Sponsor Pipeline": { type: "table", headers: ["Sponsor", "Package", "Value", "Stage"], rows: [
+      { cells: ["Diageo", "Spirits Partner", "$12,000", "Signed"], status: "#30D158" },
+      { cells: ["Stripe", "Payments Gold", "$8,500", "Signed"], status: "#30D158" },
+      { cells: ["Hendrick's Gin", "Activation", "$5,000", "In Review"], status: "#FF9F0A" },
+      { cells: ["Toast POS", "Tech Partner", "$4,000", "Negotiating"], status: "#5E5CE6" },
+    ]},
+    "Event Checklist": { type: "table", headers: ["Task", "Assigned", "Status"], rows: [
+      { cells: ["AV equipment confirmed", "Marcus T.", "Done"], status: "#30D158" },
+      { cells: ["Catering menu signed off", "Sofia A.", "Done"], status: "#30D158" },
+      { cells: ["Sponsor placements", "Diana R.", "In Progress"], status: "#FF9F0A" },
+      { cells: ["Guest list finalized", "Front Desk", "In Progress"], status: "#FF9F0A" },
+      { cells: ["Security briefing", "Kenji L.", "Pending"], status: "#5E5CE6" },
+      { cells: ["DJ contract signed", "Diana R.", "Overdue"], status: "#FF453A" },
+    ]},
+    "Venue Capacity": { type: "chart", bars: [
+      { label: "Main Hall", value: 100, color: "#FF6B35" },
+      { label: "Rooftop", value: 100, color: "#FF6B35" },
+      { label: "Private Dining", value: 60, color: "#FF9F0A" },
+      { label: "Boardroom", value: 35, color: "#0A84FF" },
+      { label: "Lounge", value: 70, color: "#5E5CE6" },
+    ]},
   };
 
   function getWidgetDisplay(name: string): WidgetDisplay {
@@ -791,6 +919,29 @@
             </button>
             <button class="ai-suggestion" onclick={() => handleSuggestion(`Pin ${selectedWidget?.name} to my desktop`)}>
               <Target size={14} strokeWidth={1.8} /><span>Pin to desktop</span>
+            </button>
+          </div>
+        {:else if selectedPocket && selectedPocket.name.includes("NexWrk")}
+          <!-- NexWrk hospitality context -->
+          <div class="ai-section">
+            <div class="ai-section-label" style="color:#FF6B35">NexWrk Intelligence</div>
+            <button class="ai-suggestion" onclick={() => handleSuggestion("What's our revenue and occupancy this week?")}>
+              <TrendingUp size={14} strokeWidth={1.8} /><span>Revenue & occupancy</span>
+            </button>
+            <button class="ai-suggestion" onclick={() => handleSuggestion("Show me the event pipeline and any issues I should know about")}>
+              <CalendarDays size={14} strokeWidth={1.8} /><span>Event pipeline check</span>
+            </button>
+            <button class="ai-suggestion" onclick={() => handleSuggestion("How are guest reviews trending this month?")}>
+              <Star size={14} strokeWidth={1.8} /><span>Review trends</span>
+            </button>
+            <button class="ai-suggestion" onclick={() => handleSuggestion("Update the member pipeline and flag any waitlist actions")}>
+              <Users size={14} strokeWidth={1.8} /><span>Member pipeline</span>
+            </button>
+            <button class="ai-suggestion" onclick={() => handleSuggestion("Add an F&B revenue forecast widget")}>
+              <Wand2 size={14} strokeWidth={1.8} /><span>Add F&B forecast</span>
+            </button>
+            <button class="ai-suggestion" onclick={() => handleSuggestion("Connect this pocket to OpenTable and Eventbrite")}>
+              <Workflow size={14} strokeWidth={1.8} /><span>Connect integrations</span>
             </button>
           </div>
         {:else if selectedPocket}

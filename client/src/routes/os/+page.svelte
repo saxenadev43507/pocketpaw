@@ -1,5 +1,5 @@
 <!-- +page.svelte — The Agent OS desktop. State hub for all OS UI interactions.
-     Updated: 2026-03-22 — Pinned desktop widgets from Pockets.
+     Updated: 2026-03-23 — NexWrk hospitality demo: added venue/event widgets to default desktop seed.
      Home screen shows wallpaper + pinned widgets + expandable chat pill.
 -->
 <script lang="ts">
@@ -39,13 +39,14 @@
     // Seed with defaults if empty
     if (pinnedWidgets.length === 0) {
       pinnedWidgets = [
-        { id: "dw1", name: "Agent Crew", pocketName: "Mission Control", icon: "users", color: "#30D158", x: 0, y: 0, w: 1, h: 1 },
-        { id: "dw2", name: "Cost Tracker", pocketName: "Mission Control", icon: "dollar-sign", color: "#0A84FF", x: 1, y: 0, w: 1, h: 1 },
-        { id: "dw3", name: "Active Tasks", pocketName: "Mission Control", icon: "list-todo", color: "#FF9F0A", x: 2, y: 0, w: 2, h: 1 },
-        { id: "dw4", name: "Activity Feed", pocketName: "Mission Control", icon: "activity", color: "#5E5CE6", x: 0, y: 1, w: 3, h: 1 },
-        { id: "dw5", name: "Soul State", pocketName: "Mission Control", icon: "brain", color: "#BF5AF2", x: 3, y: 0, w: 1, h: 1 },
-        { id: "dw6", name: "System", pocketName: "Infrastructure", icon: "cpu", color: "#64D2FF", x: 3, y: 1, w: 1, h: 1 },
-        { id: "dw7", name: "Competitors", pocketName: "Research", icon: "globe", color: "#FF453A", x: 2, y: 1, w: 2, h: 1 },
+        // Row 1 — NexWrk operations
+        { id: "dw1", name: "NexWrk Revenue", pocketName: "NexWrk HQ", icon: "dollar-sign", color: "#30D158", x: 0, y: 0, w: 1, h: 1 },
+        { id: "dw2", name: "Event Pipeline", pocketName: "NexWrk HQ", icon: "trending-up", color: "#FF6B35", x: 1, y: 0, w: 2, h: 1 },
+        { id: "dw3", name: "Occupancy Rate", pocketName: "NexWrk HQ", icon: "bar-chart-3", color: "#BF5AF2", x: 3, y: 0, w: 1, h: 1 },
+        // Row 2 — Member + reviews
+        { id: "dw4", name: "Member Pipeline", pocketName: "NexWrk HQ", icon: "users", color: "#5E5CE6", x: 0, y: 1, w: 2, h: 1 },
+        { id: "dw5", name: "Event Reviews", pocketName: "NexWrk HQ", icon: "star", color: "#FEBC2E", x: 2, y: 1, w: 1, h: 1 },
+        { id: "dw6", name: "Venue Bookings", pocketName: "NexWrk HQ", icon: "activity", color: "#0A84FF", x: 3, y: 1, w: 1, h: 1 },
       ];
       savePinnedWidgets();
     }

@@ -1,5 +1,5 @@
 <!-- DesktopWidgets.svelte — Pinned widgets on the home desktop.
-     Updated: 2026-03-22 — Multiple widget types: stats, chart, table, activity.
+     Updated: 2026-03-23 — Added Star icon + NexWrk widget display data for hospitality demo.
      Each widget renders differently based on its display type.
 -->
 <script lang="ts">
@@ -21,6 +21,7 @@
   import Cpu from "@lucide/svelte/icons/cpu";
   import Clock from "@lucide/svelte/icons/clock";
   import Zap from "@lucide/svelte/icons/zap";
+  import Star from "@lucide/svelte/icons/star";
   import type { Component } from "svelte";
 
   export type PinnedWidget = {
@@ -50,6 +51,7 @@
     activity: Activity, "dollar-sign": DollarSign, "list-todo": ListTodo,
     users: Users, shield: Shield, "trending-up": TrendingUp,
     globe: Globe, "sticky-note": StickyNote, cpu: Cpu, clock: Clock, zap: Zap,
+    star: Star,
   };
 
   function getIcon(key: string): Component {
@@ -173,6 +175,66 @@
         { cells: ["Open Interpreter", "$20/mo", "~30K", "—"], status: "#5E5CE6" },
         { cells: ["NanoClaw", "Free", "22K ★", "New"], status: "#0A84FF" },
         { cells: ["Aider", "Free", "18K ★", "+2K"], status: "#30D158" },
+      ],
+    },
+    // --- NexWrk Hospitality ---
+    "NexWrk Revenue": {
+      type: "stats",
+      stats: [
+        { label: "Revenue Today", value: "$18,400", trend: "+23%" },
+        { label: "Events This Week", value: "6", trend: "+2" },
+        { label: "Avg Event Value", value: "$12,800" },
+        { label: "F&B Upsell", value: "$3,200", trend: "+8%" },
+      ],
+    },
+    "Event Pipeline": {
+      type: "table",
+      headers: ["Event", "Date", "Revenue", "Status"],
+      rows: [
+        { cells: ["Founders Dinner", "Mar 25", "$14,500", "Confirmed"], status: "#30D158" },
+        { cells: ["Hospitality Summit", "Mar 27", "$28,000", "Confirmed"], status: "#30D158" },
+        { cells: ["Private Buyout", "Mar 28", "$18,000", "Pending"], status: "#FF9F0A" },
+        { cells: ["Product Launch Night", "Apr 2", "$22,500", "Confirmed"], status: "#30D158" },
+      ],
+    },
+    "Occupancy Rate": {
+      type: "chart",
+      bars: [
+        { label: "Mon", value: 45, color: "#BF5AF2" },
+        { label: "Tue", value: 60, color: "#BF5AF2" },
+        { label: "Wed", value: 55, color: "#BF5AF2" },
+        { label: "Thu", value: 92, color: "#BF5AF2" },
+        { label: "Fri", value: 100, color: "#BF5AF2" },
+        { label: "Sat", value: 100, color: "#BF5AF2" },
+        { label: "Sun", value: 40, color: "#BF5AF2" },
+      ],
+    },
+    "Member Pipeline": {
+      type: "table",
+      headers: ["Stage", "Count", "Action"],
+      rows: [
+        { cells: ["Waitlist", "847", "Review"], status: "#5E5CE6" },
+        { cells: ["Qualified", "62", "Send invites"], status: "#0A84FF" },
+        { cells: ["Onboarding", "14", "Follow up"], status: "#FF9F0A" },
+        { cells: ["Active", "186", "Engaged"], status: "#30D158" },
+      ],
+    },
+    "Event Reviews": {
+      type: "activity",
+      items: [
+        { text: "★★★★★ \"Rooftop venue is unmatched in NYC\" — Google", time: "2h", dot: "#FEBC2E" },
+        { text: "★★★★★ \"Founders Dinner was perfectly run\" — Attendee", time: "1d", dot: "#FEBC2E" },
+        { text: "★★★★☆ \"Great space, catering could be better\" — Yelp", time: "2d", dot: "#FEBC2E" },
+        { text: "★★★★★ \"Best networking event I've attended\" — LinkedIn", time: "3d", dot: "#FEBC2E" },
+      ],
+    },
+    "Venue Bookings": {
+      type: "activity",
+      items: [
+        { text: "Main Hall — Meridian Capital — Mar 25 7pm", time: "Locked", dot: "#30D158" },
+        { text: "Rooftop — Hospitality Assoc. — Mar 27 6pm", time: "Locked", dot: "#30D158" },
+        { text: "Private Dining — Undisclosed — Mar 28 8pm", time: "Hold 48h", dot: "#FF9F0A" },
+        { text: "Full Venue — Launchpad Events — Apr 2 7pm", time: "Contract", dot: "#FF9F0A" },
       ],
     },
   };
