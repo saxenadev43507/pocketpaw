@@ -42,8 +42,17 @@
   import Building2 from "@lucide/svelte/icons/building-2";
   import UtensilsCrossed from "@lucide/svelte/icons/utensils-crossed";
   import Monitor from "@lucide/svelte/icons/monitor";
+  import Heart from "@lucide/svelte/icons/heart";
+  import Scale from "@lucide/svelte/icons/scale";
+  import GraduationCap from "@lucide/svelte/icons/graduation-cap";
+  import Stethoscope from "@lucide/svelte/icons/stethoscope";
+  import Gavel from "@lucide/svelte/icons/gavel";
+  import BookOpen from "@lucide/svelte/icons/book-open";
   import type { Component } from "svelte";
   import TerminalPocket from "./TerminalPocket.svelte";
+  import HealthPocket from "./pockets/HealthPocket.svelte";
+  import LegalPocket from "./pockets/LegalPocket.svelte";
+  import EduPocket from "./pockets/EduPocket.svelte";
 
   // --- Team Soul system ---
   type TeamSoul = {
@@ -222,6 +231,9 @@
     { id: "data", label: "Data & Metrics", icon: BarChart3 },
     { id: "business", label: "Business", icon: Store },
     { id: "hospitality", label: "Hospitality", icon: Building2 },
+    { id: "healthcare", label: "Healthcare", icon: Heart },
+    { id: "legal", label: "Legal", icon: Scale },
+    { id: "education", label: "Education", icon: GraduationCap },
     { id: "custom", label: "Custom", icon: Layers },
   ];
   let activeCategory = $state("all");
@@ -338,6 +350,48 @@
     ]},
     // --- Terminal / Bloomberg-style pocket ---
     { id: "p14", name: "NexWrk Terminal", description: "Bloomberg-style analytics — revenue trends, occupancy heatmap, member growth, F&B breakdown", type: "hospitality", icon: Monitor, color: "#64D2FF", lastActive: "Just now", active: true, collaborators: [COLLAB_PRAKASH, COLLAB_ROBERT], widgets: [] },
+    // --- Healthcare vertical ---
+    { id: "p15", name: "Patient: Maya Chen", description: "Vitals, medications, lab results, care timeline — Room 412, Dr. Patel attending", type: "healthcare", icon: Stethoscope, color: "#30D158", lastActive: "Just now", active: true, widgets: [
+      { id: "w90", name: "Vital Signs", icon: Activity, color: "#30D158", span: "col-span-2" },
+      { id: "w91", name: "Medications", icon: Heart, color: "#0A84FF", span: "col-span-1" },
+      { id: "w92", name: "Lab Results", icon: FlaskConical, color: "#FF9F0A", span: "col-span-1" },
+      { id: "w93", name: "Care Timeline", icon: Clock, color: "#BF5AF2", span: "col-span-2" },
+      { id: "w94", name: "AI Agent Notes", icon: Brain, color: "#BF5AF2", span: "col-span-1" },
+    ]},
+    { id: "p16", name: "Ward Overview", description: "Bed occupancy, staff assignments, patient alerts, discharge planning", type: "healthcare", icon: Heart, color: "#FF453A", lastActive: "5 min ago", widgets: [
+      { id: "w95", name: "Bed Occupancy", icon: BarChart3, color: "#0A84FF", span: "col-span-2" },
+      { id: "w96", name: "Staff On Duty", icon: Users, color: "#30D158", span: "col-span-1" },
+      { id: "w97", name: "Patient Alerts", icon: Shield, color: "#FF453A", span: "col-span-1" },
+      { id: "w98", name: "Discharge Queue", icon: ListTodo, color: "#FF9F0A", span: "col-span-2" },
+    ]},
+    // --- Legal vertical ---
+    { id: "p17", name: "Smith v. Jones Corp", description: "Case #2026-CV-4892 — deadlines, documents, billable hours, AI legal research", type: "legal", icon: Gavel, color: "#5E5CE6", lastActive: "Just now", active: true, widgets: [
+      { id: "w100", name: "Deadline Alerts", icon: Clock, color: "#FF453A", span: "col-span-2" },
+      { id: "w101", name: "Documents", icon: Layers, color: "#0A84FF", span: "col-span-1" },
+      { id: "w102", name: "Billable Hours", icon: DollarSign, color: "#30D158", span: "col-span-1" },
+      { id: "w103", name: "Case Timeline", icon: Activity, color: "#5E5CE6", span: "col-span-2" },
+      { id: "w104", name: "AI Legal Research", icon: Brain, color: "#BF5AF2", span: "col-span-1" },
+    ]},
+    { id: "p18", name: "Firm Dashboard", description: "Active cases, total billable, team utilization, client pipeline", type: "legal", icon: Scale, color: "#0A84FF", lastActive: "2 hours ago", widgets: [
+      { id: "w105", name: "Active Cases", icon: BarChart3, color: "#5E5CE6", span: "col-span-1" },
+      { id: "w106", name: "Revenue MTD", icon: DollarSign, color: "#30D158", span: "col-span-1" },
+      { id: "w107", name: "Team Utilization", icon: Users, color: "#FF9F0A", span: "col-span-2" },
+      { id: "w108", name: "Client Pipeline", icon: TrendingUp, color: "#0A84FF", span: "col-span-2" },
+    ]},
+    // --- Education vertical ---
+    { id: "p19", name: "CS 301: Machine Learning", description: "Aria Patel — knowledge map, assignments, study streaks, AI tutor insights", type: "education", icon: GraduationCap, color: "#64D2FF", lastActive: "Just now", active: true, widgets: [
+      { id: "w110", name: "Knowledge Map", icon: Brain, color: "#64D2FF", span: "col-span-2" },
+      { id: "w111", name: "Assignments", icon: ListTodo, color: "#FF9F0A", span: "col-span-1" },
+      { id: "w112", name: "Performance", icon: TrendingUp, color: "#30D158", span: "col-span-1" },
+      { id: "w113", name: "Study Streak", icon: Zap, color: "#FEBC2E", span: "col-span-1" },
+      { id: "w114", name: "AI Tutor", icon: Brain, color: "#BF5AF2", span: "col-span-1" },
+    ]},
+    { id: "p20", name: "Class Analytics", description: "Teacher view — student progress, at-risk flags, curriculum coverage, grade distribution", type: "education", icon: BookOpen, color: "#30D158", lastActive: "1 hour ago", widgets: [
+      { id: "w115", name: "Student Progress", icon: Users, color: "#0A84FF", span: "col-span-2" },
+      { id: "w116", name: "At-Risk Students", icon: Shield, color: "#FF453A", span: "col-span-1" },
+      { id: "w117", name: "Curriculum Coverage", icon: BarChart3, color: "#30D158", span: "col-span-1" },
+      { id: "w118", name: "Grade Distribution", icon: BarChart3, color: "#FF9F0A", span: "col-span-2" },
+    ]},
   ];
 
   // --- Widget display data (same system as DesktopWidgets) ---
@@ -729,6 +783,87 @@
       { label: "Boardroom", value: 35, color: "#0A84FF" },
       { label: "Lounge", value: 70, color: "#5E5CE6" },
     ]},
+    // --- Healthcare: Ward Overview ---
+    "Bed Occupancy": { type: "chart", bars: [
+      { label: "ICU", value: 92, color: "#FF453A" },
+      { label: "Surgical", value: 78, color: "#FF9F0A" },
+      { label: "Medical", value: 85, color: "#FF9F0A" },
+      { label: "Pediatric", value: 60, color: "#30D158" },
+      { label: "Maternity", value: 45, color: "#30D158" },
+    ]},
+    "Staff On Duty": { type: "table", headers: ["Name", "Role", "Ward", "Shift"], rows: [
+      { cells: ["Dr. Patel", "Attending", "Medical", "Day"], status: "#30D158" },
+      { cells: ["Nurse Kim", "RN", "ICU", "Day"], status: "#30D158" },
+      { cells: ["Nurse Alex", "RN", "Surgical", "Day"], status: "#30D158" },
+      { cells: ["Dr. Chen", "Resident", "Pediatric", "Night"], status: "#0A84FF" },
+      { cells: ["RT Johnson", "Respiratory", "ICU", "Day"], status: "#30D158" },
+    ]},
+    "Patient Alerts": { type: "activity", items: [
+      { text: "Room 412 — BP trending high (3 days)", time: "5m", dot: "#FF453A" },
+      { text: "Room 308 — Fall risk assessment due", time: "20m", dot: "#FF9F0A" },
+      { text: "Room 215 — Discharge ready, awaiting transport", time: "1h", dot: "#0A84FF" },
+      { text: "Room 501 — Lab results abnormal (WBC elevated)", time: "2h", dot: "#FF453A" },
+    ]},
+    "Discharge Queue": { type: "table", headers: ["Patient", "Room", "Condition", "ETA"], rows: [
+      { cells: ["J. Martinez", "215", "Post-op recovery", "Today 2pm"], status: "#30D158" },
+      { cells: ["K. Thompson", "318", "Observation complete", "Today 4pm"], status: "#30D158" },
+      { cells: ["L. Adams", "422", "Awaiting labs", "Tomorrow"], status: "#FF9F0A" },
+      { cells: ["M. Davis", "109", "Family meeting pending", "TBD"], status: "#5E5CE6" },
+    ]},
+    // --- Legal: Firm Dashboard ---
+    "Active Cases": { type: "stats", stats: [
+      { label: "Total Active", value: "23" },
+      { label: "Trial This Month", value: "2" },
+      { label: "Settlement Talks", value: "5" },
+      { label: "New This Week", value: "3", trend: "+1" },
+    ]},
+    "Revenue MTD": { type: "stats", stats: [
+      { label: "Billed", value: "$284,500", trend: "+12%" },
+      { label: "Collected", value: "$218,200" },
+      { label: "Outstanding", value: "$66,300" },
+      { label: "Avg Rate", value: "$425/hr" },
+    ]},
+    "Team Utilization": { type: "chart", bars: [
+      { label: "Park", value: 92, color: "#30D158" },
+      { label: "Chen", value: 78, color: "#0A84FF" },
+      { label: "Williams", value: 85, color: "#0A84FF" },
+      { label: "Rivera", value: 64, color: "#FF9F0A" },
+      { label: "Thompson", value: 45, color: "#FF453A" },
+    ]},
+    "Client Pipeline": { type: "table", headers: ["Client", "Matter", "Value", "Stage"], rows: [
+      { cells: ["Acme Corp", "IP Dispute", "$180K", "Engaged"], status: "#30D158" },
+      { cells: ["TechFlow Inc", "Employment", "$45K", "Proposal"], status: "#0A84FF" },
+      { cells: ["Green Valley", "Real Estate", "$92K", "Negotiation"], status: "#FF9F0A" },
+      { cells: ["DataSync LLC", "Contract Review", "$28K", "Intake"], status: "#5E5CE6" },
+    ]},
+    // --- Education: Class Analytics ---
+    "Student Progress": { type: "table", headers: ["Student", "Grade", "Trend", "Risk"], rows: [
+      { cells: ["Aria Patel", "A-", "↑", "None"], status: "#30D158" },
+      { cells: ["Marcus Lee", "B+", "→", "None"], status: "#30D158" },
+      { cells: ["Priya Shah", "B", "↓", "Monitor"], status: "#FF9F0A" },
+      { cells: ["James Kim", "C+", "↓", "At Risk"], status: "#FF453A" },
+      { cells: ["Sofia Chen", "A", "↑", "None"], status: "#30D158" },
+    ]},
+    "At-Risk Students": { type: "activity", items: [
+      { text: "James Kim — 3 missed assignments, quiz avg dropped 15%", time: "Today", dot: "#FF453A" },
+      { text: "Priya Shah — attendance 72%, was 95% in Feb", time: "Today", dot: "#FF9F0A" },
+      { text: "Tyler Ross — hasn't submitted Lab 4 or 5", time: "2d", dot: "#FF453A" },
+    ]},
+    "Curriculum Coverage": { type: "chart", bars: [
+      { label: "Linear Algebra", value: 100, color: "#30D158" },
+      { label: "Probability", value: 100, color: "#30D158" },
+      { label: "Gradient Descent", value: 85, color: "#0A84FF" },
+      { label: "CNNs", value: 60, color: "#FF9F0A" },
+      { label: "Transformers", value: 20, color: "#FF453A" },
+      { label: "RNNs", value: 0, color: "#48484A" },
+    ]},
+    "Grade Distribution": { type: "chart", bars: [
+      { label: "A", value: 28, color: "#30D158" },
+      { label: "B", value: 38, color: "#0A84FF" },
+      { label: "C", value: 22, color: "#FF9F0A" },
+      { label: "D", value: 8, color: "#FF453A" },
+      { label: "F", value: 4, color: "#FF453A" },
+    ]},
   };
 
   function getWidgetDisplay(name: string): WidgetDisplay {
@@ -926,13 +1061,19 @@
             </div>
           </header>
 
-          <!-- Terminal pocket — full ECharts dashboard -->
+          <!-- Custom pocket renderers -->
           {#if selectedPocket.id === "p14"}
             <TerminalPocket />
+          {:else if selectedPocket.id === "p15"}
+            <HealthPocket />
+          {:else if selectedPocket.id === "p17"}
+            <LegalPocket />
+          {:else if selectedPocket.id === "p19"}
+            <EduPocket />
           {/if}
 
           <!-- Widget canvas — clickable cards (for regular pockets) -->
-          {#if selectedPocket.id !== "p14"}
+          {#if !["p14", "p15", "p17", "p19"].includes(selectedPocket.id)}
           <div class="widget-canvas">
             {#each selectedPocket.widgets as widget}
               {@const WIcon = widget.icon}
