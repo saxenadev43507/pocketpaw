@@ -344,10 +344,10 @@ class SoulForgetTool(BaseTool):
             elif before_date and hasattr(self._soul, "forget_before"):
                 from datetime import datetime
                 result = await self._soul.forget_before(datetime.fromisoformat(before_date))
-            elif hasattr(self._soul, "forget"):
+            elif query and hasattr(self._soul, "forget"):
                 result = await self._soul.forget(query)
             else:
-                return self._error("Requires soul-protocol >= 0.2.8.")
+                return self._error("No valid forget operation. Provide a non-empty query, entity, or before_date.")
             total = result.get("total", "unknown") if isinstance(result, dict) else str(result)
             return self._success(f"Forgotten {total} memories. {json.dumps(result, default=str)}")
         except Exception as e:

@@ -111,7 +111,8 @@ async def soul_remember(body: dict):
     if not content:
         return {"error": "Missing 'content'"}
     try:
-        mid = await mgr.soul.remember(content, importance=body.get("importance", 5))
+        importance = max(1, min(10, body.get("importance", 5)))
+        mid = await mgr.soul.remember(content, importance=importance)
         mgr._dirty = True
         return {"ok": True, "memory_id": mid}
     except Exception as exc:
