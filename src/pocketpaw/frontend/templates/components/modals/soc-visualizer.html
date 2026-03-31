@@ -1,0 +1,503 @@
+{#- soc-visualizer.html — Mini-SOC Audit Visualizer Modal (v3 — REAL DATA)
+    Jinja2/Alpine.js modal template.
+    Include in modals.html:  {% include "components/modals/soc-visualizer.html" %}
+    
+    Connected to REAL API endpoints:
+      GET  /api/self-audit/reports
+      GET  /api/self-audit/reports/{date}
+      POST /api/self-audit/run
+    
+    Design: PocketPaw brand oklch colors with light/dark support.
+    All classes scoped with .soc-- prefix.
+-#}
+
+<!-- ═══════════════════════════════════════════════════════════
+     SOC v3 STYLES
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+/* --- Brand tokens (oklch) --- */
+.soc--root {
+  --paw-accent: oklch(0.78 0.15 65);
+  --paw-accent-hover: oklch(0.72 0.15 65);
+  --paw-accent-subtle: oklch(0.78 0.15 65 / 15%);
+  --paw-success: oklch(0.72 0.17 155);
+  --paw-warning: oklch(0.80 0.16 80);
+  --paw-error: oklch(0.65 0.22 25);
+  --paw-info: oklch(0.70 0.12 250);
+  --soc-bg: oklch(0.13 0.015 260);
+  --soc-fg: oklch(0.95 0.005 260);
+  --soc-card: oklch(0.17 0.015 260);
+  --soc-secondary: oklch(0.25 0.015 260);
+  --soc-muted: oklch(0.65 0.015 260);
+  --soc-border: oklch(1 0 0 / 10%);
+  --soc-radius: 0.5rem;
+  --soc-success-bg: oklch(0.72 0.17 155 / 20%);
+  --soc-success-border: oklch(0.72 0.17 155 / 50%);
+  --soc-warning-bg: oklch(0.80 0.16 80 / 20%);
+  --soc-warning-border: oklch(0.80 0.16 80 / 50%);
+  --soc-error-bg: oklch(0.65 0.22 25 / 20%);
+  --soc-error-border: oklch(0.65 0.22 25 / 50%);
+  --soc-info-bg: oklch(0.70 0.12 250 / 15%);
+  --soc-info-border: oklch(0.70 0.12 250 / 40%);
+  --soc-empty-bg: oklch(0.22 0.015 260);
+  --soc-empty-border: oklch(1 0 0 / 8%);
+  --soc-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --soc-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", ui-monospace, monospace;
+}
+
+.soc--root *, .soc--root *::before, .soc--root *::after { box-sizing: border-box; }
+
+/* --- Modal overlay --- */
+.soc--overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.72); backdrop-filter: blur(4px);
+}
+
+/* --- Card shell --- */
+.soc--card {
+  background: color-mix(in oklab, var(--soc-card) 80%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--soc-border);
+  border-radius: calc(var(--soc-radius) + 4px);
+  overflow: hidden;
+  width: min(92vw, 900px); max-height: 88vh;
+  display: flex; flex-direction: column;
+  font-family: var(--soc-font);
+  color: var(--soc-fg);
+  font-size: 13px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.72);
+}
+
+/* --- Header --- */
+.soc--header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--soc-border);
+  background: color-mix(in oklab, var(--soc-secondary) 50%, transparent);
+  flex-shrink: 0;
+}
+.soc--hdr-left  { display: flex; align-items: center; gap: 12px; }
+.soc--hdr-right { display: flex; align-items: center; gap: 8px; }
+
+.soc--paw-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--paw-accent-subtle);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.soc--paw-icon svg { width: 22px; height: 22px; color: var(--paw-accent); }
+
+.soc--title {
+  font-size: 15px; font-weight: 600;
+  color: var(--soc-fg); margin: 0 0 2px;
+}
+.soc--subtitle {
+  font-size: 12px; color: var(--soc-muted); margin: 0;
+}
+
+.soc--run-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--soc-radius);
+  border: 1px solid var(--soc-border);
+  background: var(--paw-accent); color: oklch(1 0 0);
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.soc--run-btn:hover:not(:disabled) {
+  background: var(--paw-accent-hover); transform: translateY(-1px);
+}
+.soc--run-btn:active { transform: translateY(0); }
+.soc--run-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.soc--close-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--soc-secondary); border: 1px solid var(--soc-border);
+  color: var(--soc-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s, color .12s;
+}
+.soc--close-btn:hover { background: oklch(0.3 0.015 260); color: var(--soc-fg); }
+
+/* --- Metrics row --- */
+.soc--metrics {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--soc-border); flex-shrink: 0;
+}
+.soc--metric {
+  padding: 16px 20px;
+  border-right: 1px solid var(--soc-border);
+}
+.soc--metric:last-child { border-right: none; }
+.soc--metric-val {
+  font-family: var(--soc-mono); font-size: 26px; font-weight: 600;
+  line-height: 1.1; margin-bottom: 4px; display: block;
+}
+.soc--metric-lbl {
+  font-size: 11px; color: var(--soc-muted);
+  text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;
+}
+
+/* --- Body (scrollable) --- */
+.soc--body {
+  overflow-y: auto; padding: 20px;
+  display: flex; flex-direction: column; gap: 20px; flex: 1;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+/* --- Section panel --- */
+.soc--panel {
+  background: color-mix(in oklab, var(--soc-secondary) 40%, transparent);
+  border: 1px solid var(--soc-border);
+  border-radius: calc(var(--soc-radius) + 2px);
+  padding: 16px 18px;
+}
+.soc--panel-label {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--soc-muted); margin-bottom: 14px;
+}
+
+/* --- Heatmap --- */
+.soc--heatmap {
+  display: grid; grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px; margin-bottom: 14px;
+}
+.soc--hcell {
+  aspect-ratio: 1; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--soc-mono); font-size: 10px; font-weight: 500;
+  border: 1px solid transparent; transition: all 0.15s ease;
+  cursor: default; position: relative;
+}
+.soc--hcell.empty   { background: var(--soc-empty-bg); border-color: var(--soc-empty-border); color: var(--soc-muted); }
+.soc--hcell.success { background: var(--soc-success-bg); border-color: var(--soc-success-border); color: var(--paw-success); cursor: pointer; }
+.soc--hcell.warning { background: var(--soc-warning-bg); border-color: var(--soc-warning-border); color: var(--paw-warning); cursor: pointer; }
+.soc--hcell.error   { background: var(--soc-error-bg); border-color: var(--soc-error-border); color: var(--paw-error); cursor: pointer; }
+.soc--hcell.success:hover,
+.soc--hcell.warning:hover,
+.soc--hcell.error:hover   { transform: scale(1.15); z-index: 1; }
+.soc--hcell.selected { outline: 2px solid var(--paw-accent); outline-offset: 2px; }
+
+/* --- Legend --- */
+.soc--legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.soc--legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--soc-muted); }
+.soc--legend-dot  { width: 10px; height: 10px; border-radius: 3px; border: 1px solid; }
+.soc--legend-dot.empty   { background: var(--soc-empty-bg);   border-color: var(--soc-empty-border); }
+.soc--legend-dot.success { background: var(--soc-success-bg); border-color: var(--soc-success-border); }
+.soc--legend-dot.warning { background: var(--soc-warning-bg); border-color: var(--soc-warning-border); }
+.soc--legend-dot.error   { background: var(--soc-error-bg);   border-color: var(--soc-error-border); }
+
+/* --- Bottom section: score + breakdown --- */
+.soc--bottom { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: start; }
+
+/* Score card */
+.soc--score-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.soc--gauge { position: relative; width: 140px; height: 140px; margin-bottom: 8px; }
+.soc--gauge svg { transform: rotate(-90deg); }
+.soc--gauge-bg  { fill: none; stroke: var(--soc-border); stroke-width: 10; }
+.soc--gauge-arc { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray .6s cubic-bezier(.4,0,.2,1), stroke .3s; }
+.soc--gauge-val {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); text-align: center;
+}
+.soc--gauge-num { font-family: var(--soc-mono); font-size: 28px; font-weight: 600; display: block; line-height: 1; }
+.soc--gauge-txt { font-size: 10px; color: var(--soc-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.soc--score-date { font-family: var(--soc-mono); font-size: 11px; color: var(--soc-muted); margin-top: 4px; }
+.soc--trend-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soc-muted); margin: 12px 0 6px; }
+.soc--sparkline { width: 100%; height: 36px; }
+.soc--sparkline-path { fill: none; stroke: var(--paw-info); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.8; }
+.soc--sec-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; background: var(--paw-accent-subtle);
+  border: 1px solid color-mix(in oklab, var(--paw-accent) 30%, transparent);
+  border-radius: 20px; font-size: 10px; font-weight: 600; color: var(--paw-accent); margin-top: 8px;
+}
+
+/* Breakdown */
+.soc--breakdown { min-width: 0; }
+.soc--breakdown-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.soc--breakdown-sum { font-size: 11px; color: var(--soc-muted); font-family: var(--soc-mono); }
+.soc--categories { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+
+.soc--category {
+  background: color-mix(in oklab, var(--soc-card) 60%, transparent);
+  border: 1px solid var(--soc-border);
+  border-radius: var(--soc-radius); padding: 12px;
+}
+.soc--cat-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.soc--cat-name { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soc-fg); }
+.soc--cat-count { font-family: var(--soc-mono); font-size: 10px; color: var(--soc-muted); }
+
+.soc--check-list { display: flex; flex-direction: column; gap: 6px; }
+.soc--check {
+  border-radius: 6px; border: 1px solid var(--soc-border);
+  border-left: 3px solid; overflow: hidden; cursor: pointer;
+  background: color-mix(in oklab, var(--soc-bg) 80%, transparent);
+  transition: all 0.15s ease;
+}
+.soc--check.pass { border-left-color: var(--paw-success); }
+.soc--check.fail { border-left-color: var(--paw-error); }
+.soc--check:hover { transform: translateX(2px); }
+
+.soc--check-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; user-select: none; }
+.soc--check-icon { font-family: var(--soc-mono); font-size: 12px; font-weight: 600; flex-shrink: 0; width: 16px; }
+.soc--check.pass .soc--check-icon { color: var(--paw-success); }
+.soc--check.fail .soc--check-icon { color: var(--paw-error); }
+.soc--check-name { flex: 1; font-size: 11px; font-weight: 500; color: var(--soc-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+.soc--sev {
+  font-family: var(--soc-mono); font-size: 8px; font-weight: 600;
+  padding: 2px 5px; border-radius: 3px; text-transform: uppercase; flex-shrink: 0;
+}
+.soc--sev.crit { background: var(--soc-error-bg);   color: var(--paw-error);   border: 1px solid var(--soc-error-border); }
+.soc--sev.high { background: var(--soc-warning-bg); color: var(--paw-warning); border: 1px solid var(--soc-warning-border); }
+.soc--sev.med  { background: var(--soc-info-bg);    color: var(--paw-info);    border: 1px solid var(--soc-info-border); }
+.soc--sev.low  { background: var(--soc-secondary);  color: var(--soc-muted);   border: 1px solid var(--soc-border); }
+
+.soc--expand-icon { font-size: 8px; color: var(--soc-muted); transition: transform 0.15s; flex-shrink: 0; }
+
+.soc--check-detail {
+  font-size: 10px; color: var(--soc-muted);
+  padding: 8px 10px 10px 34px; line-height: 1.5;
+  border-top: 1px solid var(--soc-border);
+}
+
+/* Loading */
+.soc--loading {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 60px; color: var(--soc-muted); font-size: 13px;
+}
+.soc--spinner {
+  width: 22px; height: 22px;
+  border: 2px solid var(--soc-border);
+  border-top-color: var(--paw-info);
+  border-radius: 50%; animation: soc--spin .7s linear infinite;
+}
+@keyframes soc--spin { to { transform: rotate(360deg); } }
+
+/* Empty */
+.soc--empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 48px 24px; text-align: center; color: var(--soc-muted); font-size: 13px;
+}
+
+/* Loading animation */
+@keyframes soc--pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.soc--pulse { animation: soc--pulse 1.5s ease-in-out infinite; }
+
+/* Responsive */
+@media(max-width:640px){
+  .soc--bottom{grid-template-columns:1fr}
+  .soc--categories{grid-template-columns:1fr}
+  .soc--metrics{grid-template-columns:repeat(2,1fr)}
+  .soc--metrics .soc--metric:nth-child(2){border-right:none}
+}
+</style>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SOC MODAL (Alpine.js — REAL DATA)
+     ═══════════════════════════════════════════════════════════ -->
+<div
+  x-show="showSOC"
+  x-transition:enter="transition ease-out duration-200"
+  x-transition:enter-start="opacity-0"
+  x-transition:enter-end="opacity-100"
+  x-transition:leave="transition ease-in duration-150"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+  class="soc--overlay soc--root"
+  @keydown.escape.window="closeSOC()"
+  @click.self="closeSOC()"
+>
+<div class="soc--card" @click.stop>
+
+  <!-- ── Header ───────────────────────────────────────────────────── -->
+  <div class="soc--header">
+    <div class="soc--hdr-left">
+      <div class="soc--paw-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+      </div>
+      <div>
+        <p class="soc--title">Security Operations Center</p>
+        <p class="soc--subtitle"
+           x-text="socReports.length > 0
+             ? socReports.length + ' audit report' + (socReports.length !== 1 ? 's' : '') + ' loaded'
+             : 'No reports yet'"></p>
+      </div>
+    </div>
+    <div class="soc--hdr-right">
+      <button class="soc--run-btn" @click="socRunAudit()" :disabled="socLoading">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        <span x-text="socLoading ? 'Running…' : 'Run audit'"></span>
+      </button>
+      <button class="soc--close-btn" @click="closeSOC()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Metrics row ──────────────────────────────────────────────── -->
+  <div class="soc--metrics" x-show="socSelectedReport">
+    <div class="soc--metric">
+      <span class="soc--metric-val" x-text="socSelectedReport ? socSelectedReport.total_checks : '—'"></span>
+      <span class="soc--metric-lbl">Checks run</span>
+    </div>
+    <div class="soc--metric">
+      <span class="soc--metric-val" style="color:var(--paw-success)"
+            x-text="socSelectedReport ? socSelectedReport.passed : '—'"></span>
+      <span class="soc--metric-lbl">Passed</span>
+    </div>
+    <div class="soc--metric">
+      <span class="soc--metric-val"
+            :style="(socSelectedReport && socSelectedReport.issues > 0) ? 'color:var(--paw-error)' : 'color:var(--paw-success)'"
+            x-text="socSelectedReport ? socSelectedReport.issues : '—'"></span>
+      <span class="soc--metric-lbl">Issues</span>
+    </div>
+    <div class="soc--metric">
+      <span class="soc--metric-val" :style="'color:' + socScoreColor()"
+            x-text="socSelectedReport ? socPassRate() + '%' : '—'"></span>
+      <span class="soc--metric-lbl">Score</span>
+    </div>
+  </div>
+
+  <!-- ── Loading ──────────────────────────────────────────────────── -->
+  <div x-show="socLoading && socReports.length === 0" class="soc--loading">
+    <div class="soc--spinner"></div>
+    <span>Fetching audit data…</span>
+  </div>
+
+  <!-- ── Body ─────────────────────────────────────────────────────── -->
+  <div x-show="!socLoading || socReports.length > 0" class="soc--body">
+
+    <!-- Heatmap -->
+    <div class="soc--panel">
+      <div class="soc--panel-label">30-Day Posture History</div>
+      <div class="soc--heatmap">
+        <template x-for="cell in socTimeline" :key="cell.date">
+          <div
+            class="soc--hcell"
+            :class="cell.level + (socCellSelected(cell) ? ' selected' : '')"
+            :title="cell.label + (cell.report
+              ? ': ' + cell.score + '% — ' + cell.report.passed + '/' + cell.report.total + ' passed'
+              : ': No report')"
+            @click="cell.report && socSelectDate(cell.date)"
+            x-text="cell.dayNum"
+          ></div>
+        </template>
+      </div>
+      <div class="soc--legend">
+        <span class="soc--legend-item"><span class="soc--legend-dot empty"></span> No data</span>
+        <span class="soc--legend-item"><span class="soc--legend-dot error"></span> Issues (3+)</span>
+        <span class="soc--legend-item"><span class="soc--legend-dot warning"></span> Warnings</span>
+        <span class="soc--legend-item"><span class="soc--legend-dot success"></span> Clean</span>
+      </div>
+    </div>
+
+    <!-- Bottom: Score + Breakdown -->
+    <div class="soc--bottom" x-show="socSelectedReport">
+
+      <!-- Score card -->
+      <div class="soc--panel soc--score-card">
+        <div class="soc--panel-label">Security Score</div>
+        <div class="soc--gauge">
+          <svg viewBox="0 0 120 120" width="140" height="140">
+            <circle class="soc--gauge-bg" cx="60" cy="60" r="44"/>
+            <circle class="soc--gauge-arc" cx="60" cy="60" r="44"
+                    :stroke="socScoreColor()"
+                    :stroke-dasharray="socDonutDash()"/>
+          </svg>
+          <div class="soc--gauge-val">
+            <span class="soc--gauge-num" :style="'color:' + socScoreColor()"
+                  x-text="socPassRate() + '%'"></span>
+            <span class="soc--gauge-txt">passing</span>
+          </div>
+        </div>
+        <div class="soc--score-date" x-text="socFmtDate(socSelectedReport ? socSelectedReport.timestamp : '')"></div>
+
+        <!-- Sparkline -->
+        <template x-if="socTrend.length > 1">
+          <div style="width:100%">
+            <div class="soc--trend-label">14-Day Trend</div>
+            <svg class="soc--sparkline" viewBox="0 0 148 36" preserveAspectRatio="none">
+              <path class="soc--sparkline-path" :d="socSparkPath()"/>
+            </svg>
+          </div>
+        </template>
+
+        <div class="soc--sec-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span x-text="(socSelectedReport ? socSelectedReport.total_checks : 0) + '-Layer Security'"></span>
+        </div>
+      </div>
+
+      <!-- Check breakdown -->
+      <div class="soc--panel soc--breakdown">
+        <div class="soc--breakdown-hdr">
+          <div class="soc--panel-label" style="margin-bottom:0">Check Breakdown</div>
+          <span class="soc--breakdown-sum" x-show="socSelectedReport"
+                x-text="'— ' + (socSelectedReport ? socSelectedReport.passed : 0) + ' passed, '
+                       + (socSelectedReport ? socSelectedReport.issues : 0) + ' issue'
+                       + ((socSelectedReport && socSelectedReport.issues !== 1) ? 's' : '')">
+          </span>
+        </div>
+        <div class="soc--categories">
+          <template x-for="cat in ['Security', 'Health', 'Config']" :key="cat">
+            <div class="soc--category" x-show="(socCategories()[cat] || []).length > 0">
+              <div class="soc--cat-hdr">
+                <span class="soc--cat-name" x-text="cat"></span>
+                <span class="soc--cat-count"
+                      x-text="(socCategories()[cat] || []).filter(c => c.passed).length + '/' + (socCategories()[cat] || []).length">
+                </span>
+              </div>
+              <div class="soc--check-list">
+                <template x-for="check in (socCategories()[cat] || [])" :key="check.check">
+                  <div class="soc--check" :class="check.passed ? 'pass' : 'fail'">
+                    <div class="soc--check-row" @click="socToggleCheck(check.check)">
+                      <span class="soc--check-icon" x-text="check.passed ? '✓' : '✗'"></span>
+                      <span class="soc--check-name" x-text="check.check"></span>
+                      <span class="soc--sev" :class="check.severity"
+                            x-text="socSevLabel(check.severity)"></span>
+                      <span class="soc--expand-icon"
+                            :style="socExpandedCheck === check.check ? 'transform:rotate(180deg)' : ''">▾</span>
+                    </div>
+                    <div class="soc--check-detail"
+                         x-show="socExpandedCheck === check.check"
+                         x-transition
+                         x-text="check.message"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!socLoading && socReports.length === 0" class="soc--empty">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/>
+      </svg>
+      <p>No audit reports found.</p>
+      <button class="soc--run-btn" @click="socRunAudit()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Run your first audit
+      </button>
+    </div>
+  </div>
+
+</div><!-- /soc--card -->
+</div><!-- /soc--overlay -->

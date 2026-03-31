@@ -99,11 +99,19 @@ async def cookie_login(request: Request):
     session_token = create_session_token(master, ttl_hours=settings.session_token_ttl_hours)
     max_age = settings.session_token_ttl_hours * 3600
 
+    # Set secure flag when accessed over HTTPS (tunnel or reverse proxy)
+    # so the cookie is never sent over plain HTTP in mixed environments.
+    is_https = (
+        request.url.scheme == "https"
+        or request.headers.get("x-forwarded-proto") == "https"
+    )
+
     response = JSONResponse(content={"ok": True})
     response.set_cookie(
         key="pocketpaw_session",
         value=session_token,
         httponly=True,
+        secure=is_https,
         samesite="lax",
         path="/",
         max_age=max_age,

@@ -82,6 +82,12 @@ class RateLimiter:
         """Check rate limit and return detailed info with header values."""
         now = time.monotonic()
 
+        # Prevent unbounded memory growth — when exposed to the internet
+        # (e.g. via Cloudflare tunnel), unique IPs can accumulate
+        # indefinitely.  Auto-evict stale entries above the threshold.
+        if len(self._buckets) > 10_000:
+            self.cleanup(max_age=600)
+
         if key not in self._buckets:
             self._buckets[key] = _Bucket(self.capacity, now)
 

@@ -26,6 +26,7 @@ Changes:
 
 import asyncio
 import base64
+import html as html_mod
 import io
 import json
 import logging
@@ -835,7 +836,10 @@ async def oauth_callback(
     from fastapi.responses import HTMLResponse
 
     if error:
-        return HTMLResponse(f"<h2>OAuth Error</h2><p>{error}</p><p>You can close this window.</p>")
+        return HTMLResponse(
+            f"<h2>OAuth Error</h2><p>{html_mod.escape(error)}</p>"
+            "<p>You can close this window.</p>"
+        )
 
     if not code:
         return HTMLResponse("<h2>Missing authorization code</h2>")
@@ -881,7 +885,7 @@ async def oauth_callback(
 
     except Exception as e:
         logger.error("OAuth callback error: %s", e)
-        return HTMLResponse(f"<h2>OAuth Error</h2><p>{e}</p>")
+        return HTMLResponse(f"<h2>OAuth Error</h2><p>{html_mod.escape(str(e))}</p>")
 
 
 def _static_version() -> str:
@@ -1070,8 +1074,14 @@ async def setup_telegram(request: Request):
         return {"qr_url": qr_url, "deep_link": deep_link}
 
     except Exception as e:
-        logger.error(f"Telegram setup failed: {e}")
-        return {"error": f"Failed to connect to Telegram: {str(e)}"}
+        error_msg = str(e)
+        # Redact bot token from error messages — python-telegram-bot
+        # exceptions may embed the token in API URLs like
+        # https://api.telegram.org/bot<TOKEN>/getMe
+        if bot_token and bot_token in error_msg:
+            error_msg = error_msg.replace(bot_token, "[REDACTED]")
+        logger.error("Telegram setup failed: %s", error_msg)
+        return {"error": f"Failed to connect to Telegram: {error_msg}"}
 
 
 @app.get("/api/telegram/pairing-status")
@@ -1549,7 +1559,15 @@ async def get_self_audit_report(date: str):
 
     from pocketpaw.config import get_config_dir
 
-    report_path = get_config_dir() / "audit_reports" / f"{date}.json"
+    reports_dir = get_config_dir() / "audit_reports"
+    report_path = (reports_dir / f"{date}.json").resolve()
+
+    # Path containment check — prevents ../../../ traversal
+    try:
+        report_path.relative_to(reports_dir.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid report date")
+
     if not report_path.exists():
         raise HTTPException(status_code=404, detail="Report not found")
     return json.loads(report_path.read_text())
