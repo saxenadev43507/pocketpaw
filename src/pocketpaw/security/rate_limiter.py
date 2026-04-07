@@ -73,6 +73,7 @@ class RateLimiter:
         self.rate = rate
         self.capacity = capacity
         self._buckets: dict[str, _Bucket] = {}
+        self._last_cleanup: float = 0.0
 
     def allow(self, key: str) -> bool:
         """Return True if the request is allowed, consuming one token."""
@@ -86,7 +87,9 @@ class RateLimiter:
         # (e.g. via Cloudflare tunnel), unique IPs can accumulate
         # indefinitely.  Auto-evict stale entries above the threshold.
         if len(self._buckets) > 10_000:
-            self.cleanup(max_age=600)
+            if now - self._last_cleanup > 30:
+                self.cleanup(max_age=600)
+                self._last_cleanup = now
 
         if key not in self._buckets:
             self._buckets[key] = _Bucket(self.capacity, now)
