@@ -1,4 +1,4 @@
-"""In-memory token-bucket rate limiter for the web dashboard.
+"""In-memory  token-bucket rate limiter for the web dashboard.
 
 Pre-configured tiers:
   - api:      10 req/s, burst 30  (general API endpoints)
